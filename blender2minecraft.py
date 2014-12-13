@@ -1,6 +1,14 @@
 bl_info = {
     "name": "Blender2Minecraft",
-    "category": "Import-Export",
+    "author": "freundTech",
+    "version": (0, 1),
+    "blender": (2, 6, 9),
+    "location": "File > Export > Export to Minecraft",
+    "description": "Export Scene as Minecraft Blockmodel",
+    "wiki_url": "https://github.com/freundTech/blender2minecraft/wiki",
+    "tracker_url": "https://github.com/freundTech/blender2minecraft/issues",
+    "support": "COMMUNITY",
+    "category": "Import-Export"
 }
 
 
