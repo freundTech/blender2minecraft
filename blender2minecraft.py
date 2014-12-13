@@ -17,7 +17,6 @@ z = 2
 nl = os.linesep
 tab = "    "
 
-particle = ""
 toRound = 2
 
 
@@ -89,9 +88,14 @@ def getDir(face):
         return ["west", [y, z]]
     raise Exception("This should never happen")   
     
+class attrdict(dict):
+    def __init__(self, *args, **kwargs):
+        dict.__init__(self, *args, **kwargs)
+        self.__dict__ = self
 
 def write_to_file(context, filepath, include_textures, ambientocclusion, firsttrans, firstscale, firstrot, thirdtrans, thirdscale, thirdrot, invtrans, invscale, invrot):
     textures = []
+    particle = ""
     scene = context.scene
     objects = scene.objects
     file = open(filepath,'w', encoding='utf-8')
@@ -195,10 +199,12 @@ def write_to_file(context, filepath, include_textures, ambientocclusion, firsttr
                     if len(face.loops) == 4:
                         direction, toUse = getDir(face)
                         
-                        uvs = []
-                        for i in range(0, len(face.loops)):
-                            uvs.append([face.loops[i][uv_layer].uv[x] * 16, face.loops[i][uv_layer].uv[y] * 16])
-                        
+                        try:
+                            uvs = []
+                            for i in range(0, len(face.loops)):
+                                uvs.append([face.loops[i][uv_layer].uv[x] * 16, face.loops[i][uv_layer].uv[y] * 16])
+                        except AttributeError:
+                            uvs = [[16,16],[ 0,16],[ 0, 0],[16, 0]]
                         
                         max, min = getMaxMin(uvs, [x, y])
                         
@@ -284,7 +290,11 @@ def write_to_file(context, filepath, include_textures, ambientocclusion, firsttr
                             print(rot)
                             print(mirror)
                             
-                            image = data.uv_textures.active.data[face.index].image
+                            try:
+                                image = data.uv_textures.active.data[face.index].image
+                            except AttributeError:
+                                image = attrdict(name=["texture"], filepath="")
+                            
                             name = [""]
                             for c in image.name:
                                 if c != '.':
@@ -705,7 +715,7 @@ class ExportBlockModel(Operator, ExportHelper):
 
 # Only needed if you want to add into a dynamic menu
 def menu_func_export(self, context):
-    self.layout.operator(ExportBlockModel.bl_idname, text="Export to Minecraft")
+    self.layout.operator(ExportBlockModel.bl_idname, text="Minecraft model (.json)")
 
 
 def register():
