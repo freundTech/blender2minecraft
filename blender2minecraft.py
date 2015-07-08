@@ -448,70 +448,32 @@ class ExportBlockModel(Operator, ExportHelper):
         row = layout.row()
         row.prop(self, "ambientocclusion")
 
+        def createTransform(name, value):
+            layout.label()
+            layout.label(text=name)
+            split = layout.split()
+            col = split.column(align=True)
+            col.label(text="Translate:")
+            col.prop(self, value, index=0, text="X")
+            col.prop(self, value, index=1, text="Y")
+            col.prop(self, value, index=2, text="Z")
 
-        layout.label()
-        layout.label(text="First Person:")
-        split = layout.split()
-        col = split.column(align=True)
-        col.label(text="Translate:")
-        col.prop(self, "fpTransform", index=0, text="X")
-        col.prop(self, "fpTransform", index=1, text="Y")
-        col.prop(self, "fpTransform", index=2, text="Z")
+            col = split.column(align=True)
+            col.label(text="Rotate:")
+            col.prop(self, value, index=3, text="X")
+            col.prop(self, value, index=4, text="Y")
+            col.prop(self, value, index=5, text="Z")
 
-        col = split.column(align=True)
-        col.label(text="Rotate:")
-        col.prop(self, "fpTransform", index=0, text="X")
-        col.prop(self, "fpTransform", index=1, text="Y")
-        col.prop(self, "fpTransform", index=2, text="Z")
+            col = split.column(align=True)
+            col.label(text="Scale:")
+            col.prop(self, value, index=6, text="X")
+            col.prop(self, value, index=7, text="Y")
+            col.prop(self, value, index=8, text="Z")
 
-        col = split.column(align=True)
-        col.label(text="Scale:")
-        col.prop(self, "fpTransform", index=0, text="X")
-        col.prop(self, "fpTransform", index=1, text="Y")
-        col.prop(self, "fpTransform", index=2, text="Z")
+        createTransform("First Person:", "fpTransform")
+        createTransform("Third Person:", "tpTransform")
+        createTransform("Inventory:", "guiTransform")
 
-        layout.label()
-        layout.label(text="Third Person:")
-        split = layout.split()
-        col = split.column(align=True)
-        col.label(text="Translate:")
-        col.prop(self, "tpTransform", index=0, text="X")
-        col.prop(self, "tpTransform", index=1, text="Y")
-        col.prop(self, "tpTransform", index=2, text="Z")
-
-        col = split.column(align=True)
-        col.label(text="Rotate:")
-        col.prop(self, "tpTransform", index=0, text="X")
-        col.prop(self, "tpTransform", index=1, text="Y")
-        col.prop(self, "tpTransform", index=2, text="Z")
-
-        col = split.column(align=True)
-        col.label(text="Scale:")
-        col.prop(self, "tpTransform", index=0, text="X")
-        col.prop(self, "tpTransform", index=1, text="Y")
-        col.prop(self, "tpTransform", index=2, text="Z")
-
-
-        layout.label()
-        layout.label(text="Inventory:")
-        split = layout.split()
-        col = split.column(align=True)
-        col.label(text="Translate:")
-        col.prop(self, "guiTransform", index=0, text="X")
-        col.prop(self, "guiTransform", index=1, text="Y")
-        col.prop(self, "guiTransform", index=2, text="Z")
-
-        col = split.column(align=True)
-        col.label(text="Rotate:")
-        col.prop(self, "guiTransform", index=0, text="X")
-        col.prop(self, "guiTransform", index=1, text="Y")
-        col.prop(self, "guiTransform", index=2, text="Z")
-
-        col = split.column(align=True)
-        col.label(text="Scale:")
-        col.prop(self, "guiTransform", index=0, text="X")
-        col.prop(self, "guiTransform", index=1, text="Y")
-        col.prop(self, "guiTransform", index=2, text="Z")
 #        layout.label(text="NOTE: The following options don't work in 14w26b")
 #        layout.label(text="They used to work in 14w21b. Hopefully they get readded.")
 #        row = layout.row()
@@ -528,14 +490,14 @@ class ExportBlockModel(Operator, ExportHelper):
     def execute(self, context):
         return write_to_file(context, self.filepath, self.include_textures, self.ambientocclusion,
                 self.fpTransform[0:3],
-                self.fpTransform[3:6],
                 self.fpTransform[6:9],
+                self.fpTransform[3:6],
                 self.tpTransform[0:3],
-                self.tpTransform[3:6],
                 self.tpTransform[6:9],
+                self.tpTransform[3:6],
                 self.guiTransform[0:3],
-                self.guiTransform[3:6],
-                self.guiTransform[6:9])
+                self.guiTransform[6:9],
+                self.guiTransform[3:6])
 
 
 # Only needed if you want to add into a dynamic menu
