@@ -17,13 +17,11 @@ from bpy import context
 import bmesh
 import os
 import math
-
+import json
 
 x = 0
 y = 1
 z = 2
-nl = os.linesep
-tab = "    "
 
 toRound = 2
 
@@ -34,14 +32,14 @@ def getMaxMin(values, use):
     for u in range(0, len(use)):
         max[u] = float('-inf')
         min[u] = float('inf')
-    
+
     for value in values:
         for u in range(0, len(use)):
             if value[use[u]] > max[u]:
                 max[u] = value[use[u]]
             if value[use[u]] < min[u]:
                 min[u] = value[use[u]]
-                
+
     for u in range(0, len(use)):
         max[u] = round(max[u], toRound)
         min[u] = round(min[u], toRound)
@@ -53,21 +51,21 @@ def getIndex(values, mask, toUse):
             return values.index(value)
     raise Exception("Value not found")
 
-def rstr(num):
-    return str(round(num, toRound))
+def rval(num):
+    return round(num, toRound)
 
 def getDir(face):
     normals = []
     for i in range(0, len(face.loops)):
         normals.append(list(face.loops[i].vert.normal))
-    
+
     top = 0
     bottom = 0
     north = 0
     south = 0
     east = 0
     west = 0
-    
+
     for i in range(0, len(normals)):
         if normals[i][x] >= 0:
             east += 1
@@ -81,7 +79,7 @@ def getDir(face):
             top += 1
         else:
             bottom += 1
-            
+
     if top == 4:
         return ["up", [x, y]]
     if bottom == 4:
@@ -94,8 +92,8 @@ def getDir(face):
         return ["east", [y, z]]
     if west == 4:
         return ["west", [y, z]]
-    raise Exception("This should never happen")   
-    
+    raise Exception("This should never happen")
+
 class attrdict(dict):
     def __init__(self, *args, **kwargs):
         dict.__init__(self, *args, **kwargs)
@@ -106,29 +104,28 @@ def write_to_file(context, filepath, include_textures, ambientocclusion, firsttr
     particle = ""
     scene = context.scene
     objects = scene.objects
+
     file = open(filepath,'w', encoding='utf-8')
-    file.write("{" + nl)
-    file.write(tab + "\"__comment\": \"This model was created with freundTech's Blender2Minecraft converter (BETA)\"," + nl)
-    
-    file.write(tab + "\"ambientocclusion\": " + str(ambientocclusion).lower() + "," + nl)
-    
-    file.write(tab + "\"elements\": [" + nl)
-    
-    firstObj = True
-    
+
+    fileContent = {}
+
+    fileContent["__comment"] = "This model was created with freundTech's Blender2Minecraft converter (BETA)"
+    fileContent["ambientocclusion"] = ambientocclusion
+    fileContent["elements"] = []
+
     if bpy.ops.object.mode_set.poll():
       bpy.ops.object.mode_set(mode='OBJECT')
 
     for obj in objects:
         if obj.type == 'MESH':
-            
+
             data = obj.data
             bm = bmesh.new()
             bm.from_mesh(data)
             uv_layer = bm.loops.layers.uv.active
-            
+
             if len(bm.faces) == 6:
-                box = []            
+                box = []
                 for i in range(0, len(obj.bound_box)):
                     box.append([])
                     for j in range(0, len(obj.bound_box[i])):
@@ -136,8 +133,8 @@ def write_to_file(context, filepath, include_textures, ambientocclusion, firsttr
                 pos = obj.location
                 scale = obj.scale
                 #print(str(obj.bound_box[0][:]) + " " + str(obj.bound_box[1][:]) + " " + str(obj.bound_box[2][:]) + str(obj.bound_box[3][:]) + " " + str(obj.bound_box[4][:]) + " " + str(obj.bound_box[5][:]) + " " + str(obj.bound_box[6][:]) + " " + str(obj.bound_box[7][:]) + " ")
-                
-                
+
+
                 for co in box:
                     for i in range(0, 3):
                         co[i] *= scale[i]
@@ -145,29 +142,26 @@ def write_to_file(context, filepath, include_textures, ambientocclusion, firsttr
                         co[i] *= 16
                     co[x] += 8
                     co[y] = (co[y]) * -1 + 8
-                
+
                 #print(nl + nl)
                 #print(box[:][:])
                 toCoord, fromCoord = getMaxMin(box, [x, y, z])
                 print(toCoord)
                 print(fromCoord)
-                                    
-                if firstObj:
-                    firstObj = False
-                else:
-                    file.write("," + nl)
-                    
+
                 objname = [""]
                 for c in obj.name:
                     if c != '.':
                         objname[len(objname)-1] += c
                     else:
                         objname.append("")
-                    
-                file.write(tab + tab + "{   \"__comment\": \"" + objname[0] + "\"," + nl)
-                file.write(tab + tab + tab + "\"from\": [ " + rstr(fromCoord[x]) + ", " + rstr(fromCoord[z]) + ", " + rstr(fromCoord[y]) + " ]," + nl)
-                file.write(tab + tab + tab + "\"to\": [ " + rstr(toCoord[x]) + ", " + rstr(toCoord[z]) + ", " + rstr(toCoord[y]) + " ]," + nl)
-                
+
+                item = {}
+
+                item["__comment"] = objname[0]
+                item["from"] = [rval(fromCoord[x]), rval(fromCoord[z]), rval(fromCoord[y])]
+                item["to"] = [rval(toCoord[x]), rval(toCoord[z]), rval(toCoord[y])]
+
                 rotation = [round(math.degrees(a), 1) for a in obj.rotation_euler]
                 notnull = 0
                 for i in range(0, len(rotation)):
@@ -180,57 +174,57 @@ def write_to_file(context, filepath, include_textures, ambientocclusion, firsttr
                 if notnull > 1:
                     raise Exception("Only one Axis can be rotated at a time!")
                 elif notnull == 1:
-                    if rotation[axis] == -22.5 or rotation[axis] == 22.5 or rotation[axis] == -45 or rotation[axis] == 45: 
-                        file.write(tab + tab + tab + "\"rotation\": { \"origin\": [ " + rstr(pos[x]*16+8) + ", " + rstr(pos[z]*16) + ", " + rstr(pos[y]*16+8) + " ], \"axis\": \"")
-                    
+                    if rotation[axis] == -22.5 or rotation[axis] == 22.5 or rotation[axis] == -45 or rotation[axis] == 45:
+                        item["rotation"] = { "origin": [rval(pos[x]*16+8), rval(pos[z]*16), rval(pos[y]*16+8)] }
+
+                        axisStr = "none"
                         if axis == 0:
-                            file.write("x")
+                            axisStr = "x"
                         elif axis == 1:
-                             file.write("z")
-                             rotation[axis] *= -1
+                            axisStr = "z"
+                            rotation[axis] *= -1
                         elif axis == 2:
-                             file.write("y")
-                        file.write("\", \"angle\": " + str(rotation[axis]))
+                            axisStr = "y"
+                        item["rotation"]["axis"] = axisStr
+                        item["rotation"]["angle"] = rotation[axis]
+
                         for n in objname:
                             if n[0:8] == "rescale:":
-                                file.write(", \"rescale\": " + n[8:])
-                        file.write(" }," + nl)
+                                item["rotation"]["rescale"] = n[8:].lower() == "true"
                     else:
                         raise Exception("You can only rotate by 22.5, -22.5, 45 or -45 degrees!")
-                
-                
-                file.write(tab + tab + tab + "\"faces\": {" + nl)
-                
-                firstUv = True                                                                                                                                                                                                      
-                
+
+
+                item["faces"] = {}
+
                 for face in bm.faces:
                     if len(face.loops) == 4:
                         direction, toUse = getDir(face)
-                        
+
                         try:
                             uvs = []
                             for i in range(0, len(face.loops)):
                                 uvs.append([face.loops[i][uv_layer].uv[x] * 16, face.loops[i][uv_layer].uv[y] * 16])
                         except AttributeError:
-                            uvs = [[16,16],[ 0,16],[ 0, 0],[16, 0]]
-                        
+                            uvs = [[16, 16], [0, 16], [0, 0], [16, 0]]
+
                         max, min = getMaxMin(uvs, [x, y])
-                        
-                        
-                        
+
+
+
                         if min[x] != max[x] and min[y] != max[y]:
-                            
+
                             verts = []
                             for i in range(0, len(face.loops)):
                                 verts.append([face.loops[i].vert.co[x] * 16, face.loops[i].vert.co[y] * 16, face.loops[i].vert.co[z] * 16])
                                 print(face.loops[i].vert.co)
                             maxr, minr = getMaxMin(verts, toUse)
-                            
+
                             print(maxr)
                             print(minr)
-                            
 
-                            
+
+
                             if direction == "south":
                                 bottom = minr
                             elif direction == "east":
@@ -243,7 +237,7 @@ def write_to_file(context, filepath, include_textures, ambientocclusion, firsttr
                                 bottom = [maxr[0], minr[1]]
                             elif direction == "west":
                                 bottom = [maxr[0], minr[1]]
-                            
+
                             print(bottom)
                             print(verts)
                             minI = getIndex(verts, bottom, toUse)
@@ -255,15 +249,15 @@ def write_to_file(context, filepath, include_textures, ambientocclusion, firsttr
                             minUv = list(uvs[minI])
                             for i in range(0, len(minUv)):
                                 minUv[i] = round(minUv[i], toRound)
-                            
+
                             nextI = minI + 1
                             while nextI >= 4:
                                 nextI -= 4
-                            
+
                             nextUv = list(uvs[nextI])
                             for i in range(0, len(nextUv)):
                                 nextUv[i] = round(nextUv[i], toRound)
-                                                            
+
                             if minUv == min and nextUv == [max[x], min[y]]:
                                 rot = 0
                                 mirror = False
@@ -297,24 +291,24 @@ def write_to_file(context, filepath, include_textures, ambientocclusion, firsttr
 
                             print(rot)
                             print(mirror)
-                            
+
                             try:
                                 image = data.uv_textures.active.data[face.index].image
                             except AttributeError:
                                 image = attrdict(name=["texture"], filepath="")
-                            
+
                             name = [""]
                             for c in image.name:
                                 if c != '.':
                                     name[len(name)-1] += c
                                 else:
                                     name.append("")
-                            
+
                             path = [""]
                             filepath = ""
                             imagepath = bpy.path.abspath(image.filepath)
                             imagepath = os.path.abspath(imagepath)
-                            
+
                             path = imagepath.split(os.sep)
 
 
@@ -323,110 +317,94 @@ def write_to_file(context, filepath, include_textures, ambientocclusion, firsttr
                                 if dir == "assets" and path[index+1] == "minecraft" and path[index+2] == "textures":
                                     for i in range(index+3, len(path)-1):
                                         filepath += path[i]
-                                        filepath += "/" 
-                                    
+                                        filepath += "/"
+
                                     for c in path[len(path)-1]:
                                         if c != '.':
                                             filepath += c
                                         else:
                                             break
-                                    
-                                            
-                                        
+
+
+
                             if not [name[0], filepath] in textures:
                                 textures.append([name[0], filepath])
-                            
+
                             print(name)
-                            if firstUv:
-                                firstUv = False
-                            else:
-                                file.write("," + nl)
-                            
+
                             print(direction)
                             print(minUv)
                             print(nextUv)
                             print(max)
                             print(min)
-                            file.write(tab + tab + tab + tab + "\"" + direction + "\": { ")
-                            
+
                             s = max[y]
-                            
+
                             max[y] = (min[y]- 8)*-1+8
                             min[y] = (s- 8)*-1+8
-                            
-                       
+
+                            item["faces"][direction] = {}
+
                             if not mirror:
-                                file.write("\"uv\": [ "+str(min[x])+", "+str(min[y])+", "+str(max[x])+", "+str(max[y])+" ], \"texture\": \"#" + name[0] + "\", \"rotation\": " + str(rot))
+                                item["faces"][direction]["uv"] = [min[x], min[y], max[x], max[y]]
+                                item["faces"][direction]["texture"] = "#" + name[0]
+                                item["faces"][direction]["rotation"] = rot
                             else:
-                                file.write("\"uv\": [ "+str(max[x])+", "+str(min[y])+", "+str(min[x])+", "+str(max[y])+" ], \"texture\": \"#" + name[0] + "\", \"rotation\": " + str(rot))
-                            
+                                item["faces"][direction]["uv"] = [max[x], min[y], min[x], max[y]]
+                                item["faces"][direction]["texture"] = "#" + name[0]
+                                item["faces"][direction]["rotation"] = rot
+
                             for n in name:
                                 if n[0:9] == "cullface:":
-                                    file.write(", \"cullface\": \""+n[9:]+"\"")
+                                    item["faces"][direction]["cullface"] = n[9:]
                                 elif n[0:8] == "cullface":
-                                    file.write(", \"cullface\": \""+direction+"\"")
+                                    item["faces"][direction]["cullface"] = direction
                                 elif n[0:10] == "tintindex:":
-                                    file.write(", \"tintindex\": "+n[10:])
+                                    item["faces"][direction]["tintindex"] = int(n[10:])
                                 elif n[0:9] == "tintindex":
-                                    file.write(", \"tintindex\": 1")
+                                    item["faces"][direction]["tintindex"] = 1
                                 elif n[0:8] == "particle":
                                     particle = filepath
 
-                            file.write(" }") 
-                        print(rstr(max[x]) + nl)
-                        print(rstr(min[x]) + nl)
-                        print(rstr(max[y]) + nl)
-                        print(rstr(min[y]) + nl + nl)
-                        
-                        
+
                     else:
                         print("Object \"" + data.name + "\" is not a cube!!!")
                 #TODO
-                file.write(nl)
-                file.write(tab + tab + tab + "}" + nl)
-                file.write(tab + tab + "}")
-                
+                fileContent["elements"].append(item)
+
             else:
                 print("Object \"" + data.name + "\" is not a cube!")
-            
-    file.write(nl + tab + "]," + nl)
+
     if include_textures:
-        file.write(tab + "\"textures\": {" + nl)
-    
-        
+        fileContent["textures"] = {}
+
         for texture in textures:
-            file.write(tab + tab + "\"" + texture[0] + "\": " + "\"" + texture[1] + "\"," + nl)
-    
+            fileContent["textures"][texture[0]] = texture[1]
+
         if particle != "":
-            file.write(tab + tab + "\"particle\": \"" + particle + "\"" + nl)
-    
-        file.write(tab + "}," + nl)
-    
-    file.write(tab + "\"display\": {" + nl)
-    file.write(tab + tab + "\"firstperson\": {" + nl)
-    file.write(tab + tab + tab + "\"rotation\": [ " + rstr(firstrot[x]) + ", " + rstr(firstrot[y]) + ", " + rstr(firstrot[z]) + " ]," + nl)
-    file.write(tab + tab + tab + "\"translation\": [ " + rstr(firsttrans[x]) + ", " + rstr(firsttrans[y]) + ", " + rstr(firsttrans[z]) + " ]," + nl)
-    file.write(tab + tab + tab + "\"scale\": [ " + rstr(firstscale[x]) + ", " + rstr(firstscale[y]) + ", " + rstr(firstscale[z]) + " ]" + nl)
-    file.write(tab + tab + "}," + nl)
+            fileContent["textures"]["particle"] = particle
 
-    file.write(tab + tab + "\"thirdperson\": {" + nl)
-    file.write(tab + tab + tab + "\"rotation\": [ " + rstr(thirdrot[x]) + ", " + rstr(thirdrot[y]) + ", " + rstr(thirdrot[z]) + " ]," + nl)
-    file.write(tab + tab + tab + "\"translation\": [ " + rstr(thirdtrans[x]) + ", " + rstr(thirdtrans[y]) + ", " + rstr(thirdtrans[z]) + " ]," + nl)
-    file.write(tab + tab + tab + "\"scale\": [ " + rstr(thirdscale[x]) + ", " + rstr(thirdscale[y]) + ", " + rstr(thirdscale[z]) + " ]" + nl)
-    file.write(tab + tab + "}," + nl)
-    
-    file.write(tab + tab + "\"gui\": {" + nl)
-    file.write(tab + tab + tab + "\"rotation\": [ " + rstr(invrot[x]) + ", " + rstr(invrot[y]) + ", " + rstr(invrot[z]) + " ]," + nl)
-    file.write(tab + tab + tab + "\"translation\": [ " + rstr(invtrans[x]) + ", " + rstr(invtrans[y]) + ", " + rstr(invtrans[z]) + " ]," + nl)
-    file.write(tab + tab + tab + "\"scale\": [ " + rstr(invscale[x]) + ", " + rstr(invscale[y]) + ", " + rstr(invscale[z]) + " ]" + nl)
-    file.write(tab + tab + "}" + nl)
-    
-    file.write(tab + "}" + nl)
-         
-    file.write("}")   
+    fileContent["display"] = {
+        "firstperson": {
+            "rotation": [rval(firstrot[x]), rval(firstrot[y]), rval(firstrot[z])],
+            "translation": [rval(firsttrans[x]), rval(firsttrans[y]), rval(firsttrans[z])],
+            "scale": [rval(firstscale[x]), rval(firstscale[y]), rval(firstscale[z])]
+        },
+        "thirdperson": {
+            "rotation": [rval(thirdrot[x]), rval(thirdrot[y]), rval(thirdrot[z])],
+            "translation": [rval(thirdtrans[x]), rval(thirdtrans[y]), rval(thirdtrans[z])],
+            "scale": [rval(thirdscale[x]), rval(thirdscale[y]), rval(thirdscale[z])]
+        },
+        "gui": {
+            "rotation": [rval(invrot[x]), rval(invrot[y]), rval(invrot[z])],
+            "translation": [rval(invtrans[x]), rval(invtrans[y]), rval(invtrans[z])],
+            "scale": [rval(invscale[x]), rval(invscale[y]), rval(invscale[z])]
+        }
+    }
 
-    file.close()     
-            
+    file.write(json.dumps(fileContent))
+    file.close()
+
 
     return {'FINISHED'}
 
@@ -550,7 +528,7 @@ class ExportBlockModel(Operator, ExportHelper):
             description="Scales the Object in thirdperson on the Z axis",
             default=1.0,
             )
-            
+
     invtransx = FloatProperty(
             name="X",
             description="Moves the Object in the Inventory on the X axis",
@@ -616,7 +594,7 @@ class ExportBlockModel(Operator, ExportHelper):
 #            description="Renders the Block 3D inside an inventory",
 #            default=True,
 #            )
-    
+
     def draw(self, context):
         layout = self.layout
 
@@ -626,12 +604,12 @@ class ExportBlockModel(Operator, ExportHelper):
         layout.label(text="Textures:")
         row = layout.row()
         row.prop(self, "include_textures")
-        
+
         layout.label(text="Ambient Occlusion:")
         row = layout.row()
         row.prop(self, "ambientocclusion")
-        
-        
+
+
         layout.label()
         layout.label(text="First Person:")
         split = layout.split()
@@ -640,19 +618,19 @@ class ExportBlockModel(Operator, ExportHelper):
         col.prop(self, "firsttransx")
         col.prop(self, "firsttransy")
         col.prop(self, "firsttransz")
-        
+
         col = split.column(align=True)
         col.label(text="Rotate:")
         col.prop(self, "firstrotx")
         col.prop(self, "firstroty")
         col.prop(self, "firstrotz")
-        
+
         col = split.column(align=True)
         col.label(text="Scale:")
         col.prop(self, "firstscalex")
         col.prop(self, "firstscaley")
         col.prop(self, "firstscalez")
-        
+
         layout.label()
         layout.label(text="Third Person:")
         split = layout.split()
@@ -661,20 +639,20 @@ class ExportBlockModel(Operator, ExportHelper):
         col.prop(self, "thirdtransx")
         col.prop(self, "thirdtransy")
         col.prop(self, "thirdtransz")
-        
+
         col = split.column(align=True)
         col.label(text="Rotate:")
         col.prop(self, "thirdrotx")
         col.prop(self, "thirdroty")
         col.prop(self, "thirdrotz")
-        
+
         col = split.column(align=True)
         col.label(text="Scale:")
         col.prop(self, "thirdscalex")
         col.prop(self, "thirdscaley")
         col.prop(self, "thirdscalez")
-        
-        
+
+
         layout.label()
         layout.label(text="Inventory:")
         split = layout.split()
@@ -683,13 +661,13 @@ class ExportBlockModel(Operator, ExportHelper):
         col.prop(self, "invtransx")
         col.prop(self, "invtransy")
         col.prop(self, "invtransz")
-        
+
         col = split.column(align=True)
         col.label(text="Rotate:")
         col.prop(self, "invrotx")
         col.prop(self, "invroty")
         col.prop(self, "invrotz")
-        
+
         col = split.column(align=True)
         col.label(text="Scale:")
         col.prop(self, "invscalex")
@@ -703,13 +681,13 @@ class ExportBlockModel(Operator, ExportHelper):
 #        row.prop(self, "randomoffset_x")
 #        row.prop(self, "randomoffset_y")
 #        row.prop(self, "randomoffset_z")
-#        
+#
 #        layout.label(text="Inventory Rendering:")
 #        row = layout.row()
 #        row.prop(self, "inverntory3drender")
 
     def execute(self, context):
-        return write_to_file(context, self.filepath, self.include_textures, self.ambientocclusion, 
+        return write_to_file(context, self.filepath, self.include_textures, self.ambientocclusion,
                 [self.firsttransx, self.firsttransy, self.firsttransz],
                 [self.firstscalex, self.firstscaley, self.firstscalez],
                 [self.firstrotx, self.firstroty, self.firstrotz],
