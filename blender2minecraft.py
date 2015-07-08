@@ -2,7 +2,7 @@ bl_info = {
     "name": "Blender2Minecraft",
     "author": "freundTech",
     "version": (0, 1),
-    "blender": (2, 6, 9),
+    "blender": (2, 7, 9),
     "location": "File > Export > Export to Minecraft",
     "description": "Export Scene as Minecraft Blockmodel",
     "wiki_url": "https://github.com/freundTech/blender2minecraft/wiki",
@@ -10,7 +10,6 @@ bl_info = {
     "support": "COMMUNITY",
     "category": "Import-Export"
 }
-
 
 import bpy
 from bpy import context
@@ -24,7 +23,6 @@ y = 1
 z = 2
 
 toRound = 2
-
 
 def getMaxMin(values, use):
     max = [None]*len(use)
@@ -99,7 +97,13 @@ class attrdict(dict):
         dict.__init__(self, *args, **kwargs)
         self.__dict__ = self
 
-def write_to_file(context, filepath, include_textures, ambientocclusion, minify, firsttrans, firstscale, firstrot, thirdtrans, thirdscale, thirdrot, invtrans, invscale, invrot):
+def write_to_file(context, filepath, include_textures, ambientocclusion, minify,
+                firsttrans, firstscale, firstrot,
+                thirdtrans, thirdscale, thirdrot,
+                invtrans, invscale, invrot,
+                headtrans, headscale, headrot,
+                groundtrans, groundscale, groundrot,
+                fixedtrans, fixedscale, fixedrot):
     textures = []
     particle = ""
     scene = context.scene
@@ -133,7 +137,6 @@ def write_to_file(context, filepath, include_textures, ambientocclusion, minify,
                 pos = obj.location
                 scale = obj.scale
                 #print(str(obj.bound_box[0][:]) + " " + str(obj.bound_box[1][:]) + " " + str(obj.bound_box[2][:]) + str(obj.bound_box[3][:]) + " " + str(obj.bound_box[4][:]) + " " + str(obj.bound_box[5][:]) + " " + str(obj.bound_box[6][:]) + " " + str(obj.bound_box[7][:]) + " ")
-
 
                 for co in box:
                     for i in range(0, 3):
@@ -193,7 +196,6 @@ def write_to_file(context, filepath, include_textures, ambientocclusion, minify,
                                 item["rotation"]["rescale"] = n[8:].lower() == "true"
                     else:
                         raise Exception("You can only rotate by 22.5, -22.5, 45 or -45 degrees!")
-
 
                 item["faces"] = {}
 
@@ -391,6 +393,21 @@ def write_to_file(context, filepath, include_textures, ambientocclusion, minify,
             "rotation": [rval(invrot[x]), rval(invrot[y]), rval(invrot[z])],
             "translation": [rval(invtrans[x]), rval(invtrans[y]), rval(invtrans[z])],
             "scale": [rval(invscale[x]), rval(invscale[y]), rval(invscale[z])]
+        },
+        "head": {
+            "rotation": [rval(headrot[x]), rval(headrot[y]), rval(headrot[z])],
+            "translation": [rval(headtrans[x]), rval(headtrans[y]), rval(headtrans[z])],
+            "scale": [rval(headscale[x]), rval(headscale[y]), rval(headscale[z])]
+        },
+        "ground": {
+            "rotation": [rval(groundrot[x]), rval(groundrot[y]), rval(groundrot[z])],
+            "translation": [rval(groundtrans[x]), rval(groundtrans[y]), rval(groundtrans[z])],
+            "scale": [rval(groundscale[x]), rval(groundscale[y]), rval(groundscale[z])]
+        },
+        "fixed": {
+            "rotation": [rval(fixedrot[x]), rval(fixedrot[y]), rval(fixedrot[z])],
+            "translation": [rval(fixedtrans[x]), rval(fixedtrans[y]), rval(fixedtrans[z])],
+            "scale": [rval(fixedscale[x]), rval(fixedscale[y]), rval(fixedscale[z])]
         }
     }
 
@@ -403,13 +420,11 @@ def write_to_file(context, filepath, include_textures, ambientocclusion, minify,
 
     return {'FINISHED'}
 
-
 # ExportHelper is a helper class, defines filename and
 # invoke() function which calls the file selector.
 from bpy_extras.io_utils import ExportHelper
 from bpy.props import StringProperty, BoolProperty, EnumProperty, FloatProperty
 from bpy.types import Operator
-
 
 class ExportBlockModel(Operator, ExportHelper):
     """This appears in the tooltip of the operator and in the generated docs"""
@@ -442,6 +457,9 @@ class ExportBlockModel(Operator, ExportHelper):
     fpTransform = bpy.props.FloatVectorProperty(name = "First Person Transform", description = "Translation, Rotation and Scale of first person (in hand) rendering", size = 9, default=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0])
     tpTransform = bpy.props.FloatVectorProperty(name = "Third Person Transform", description = "Translation, Rotation and Scale of third person rendering", size = 9, default=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0])
     guiTransform = bpy.props.FloatVectorProperty(name = "GUI Transform", description = "Translation, Rotation and Scale in the GUI (Inventory)", size = 9, default=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0])
+    headTransform = bpy.props.FloatVectorProperty(name = "Head Transform", description = "Translation, Rotation and Scale when equipped as helmet", size = 9, default=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0])
+    groundTransform = bpy.props.FloatVectorProperty(name = "Ground Transform", description = "Translation, Rotation and Scale on the ground", size = 9, default=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0])
+    fixedTransform = bpy.props.FloatVectorProperty(name = "Item Frame Transform", description = "Translation, Rotation and Scale in Item Frames", size = 9, default=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0])
 
     def draw(self, context):
         layout = self.layout
@@ -486,6 +504,9 @@ class ExportBlockModel(Operator, ExportHelper):
         createTransform("First Person:", "fpTransform")
         createTransform("Third Person:", "tpTransform")
         createTransform("Inventory:", "guiTransform")
+        createTransform("Head:", "headTransform")
+        createTransform("Ground:", "groundTransform")
+        createTransform("Item Frame:", "fixedTransform")
 
 #        layout.label(text="NOTE: The following options don't work in 14w26b")
 #        layout.label(text="They used to work in 14w21b. Hopefully they get readded.")
@@ -510,23 +531,28 @@ class ExportBlockModel(Operator, ExportHelper):
                 self.tpTransform[3:6],
                 self.guiTransform[0:3],
                 self.guiTransform[6:9],
-                self.guiTransform[3:6])
-
+                self.guiTransform[3:6],
+                self.headTransform[0:3],
+                self.headTransform[6:9],
+                self.headTransform[3:6],
+                self.groundTransform[0:3],
+                self.groundTransform[6:9],
+                self.groundTransform[3:6],
+                self.fixedTransform[0:3],
+                self.fixedTransform[6:9],
+                self.fixedTransform[3:6])
 
 # Only needed if you want to add into a dynamic menu
 def menu_func_export(self, context):
     self.layout.operator(ExportBlockModel.bl_idname, text="Minecraft model (.json)")
 
-
 def register():
     bpy.utils.register_class(ExportBlockModel)
     bpy.types.INFO_MT_file_export.append(menu_func_export)
 
-
 def unregister():
     bpy.utils.unregister_class(ExportBlockModel)
     bpy.types.INFO_MT_file_export.remove(menu_func_export)
-
 
 if __name__ == "__main__":
     register()
