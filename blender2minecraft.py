@@ -1,8 +1,8 @@
 bl_info = {
     "name": "Blender2Minecraft",
     "author": "freundTech",
-    "version": (0, 1),
-    "blender": (2, 7, 9),
+    "version": (0, 2),
+    "blender": (2, 6, 9),
     "location": "File > Export > Export to Minecraft",
     "description": "Export Scene as Minecraft Blockmodel",
     "wiki_url": "https://github.com/freundTech/blender2minecraft/wiki",
