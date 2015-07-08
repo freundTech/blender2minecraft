@@ -99,7 +99,7 @@ class attrdict(dict):
         dict.__init__(self, *args, **kwargs)
         self.__dict__ = self
 
-def write_to_file(context, filepath, include_textures, ambientocclusion, firsttrans, firstscale, firstrot, thirdtrans, thirdscale, thirdrot, invtrans, invscale, invrot):
+def write_to_file(context, filepath, include_textures, ambientocclusion, minify, firsttrans, firstscale, firstrot, thirdtrans, thirdscale, thirdrot, invtrans, invscale, invrot):
     textures = []
     particle = ""
     scene = context.scene
@@ -114,7 +114,7 @@ def write_to_file(context, filepath, include_textures, ambientocclusion, firsttr
     fileContent["elements"] = []
 
     if bpy.ops.object.mode_set.poll():
-      bpy.ops.object.mode_set(mode='OBJECT')
+        bpy.ops.object.mode_set(mode='OBJECT')
 
     for obj in objects:
         if obj.type == 'MESH':
@@ -394,7 +394,11 @@ def write_to_file(context, filepath, include_textures, ambientocclusion, firsttr
         }
     }
 
-    file.write(json.dumps(fileContent))
+    if(minify):
+        file.write(json.dumps(fileContent, separators=(',', ':'), sort_keys=False))
+    else:
+        file.write(json.dumps(fileContent, indent=4, sort_keys=False))
+
     file.close()
 
     return {'FINISHED'}
@@ -429,6 +433,11 @@ class ExportBlockModel(Operator, ExportHelper):
             description="Turns the Ambient Occlusion option on or off",
             default=True,
             )
+    minify = BoolProperty(
+            name="Minify Json",
+            description="Reduces size of exported .json by omitting redundant whitespaces",
+            default=True,
+            )
 
     fpTransform = bpy.props.FloatVectorProperty(name = "First Person Transform", description = "Translation, Rotation and Scale of first person (in hand) rendering", size = 9, default=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0])
     tpTransform = bpy.props.FloatVectorProperty(name = "Third Person Transform", description = "Translation, Rotation and Scale of third person rendering", size = 9, default=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0])
@@ -447,6 +456,10 @@ class ExportBlockModel(Operator, ExportHelper):
         layout.label(text="Ambient Occlusion:")
         row = layout.row()
         row.prop(self, "ambientocclusion")
+
+        layout.label(text="Minify Json:")
+        row = layout.row()
+        row.prop(self, "minify")
 
         def createTransform(name, value):
             layout.label()
@@ -488,7 +501,7 @@ class ExportBlockModel(Operator, ExportHelper):
 #        row.prop(self, "inverntory3drender")
 
     def execute(self, context):
-        return write_to_file(context, self.filepath, self.include_textures, self.ambientocclusion,
+        return write_to_file(context, self.filepath, self.include_textures, self.ambientocclusion, self.minify,
                 self.fpTransform[0:3],
                 self.fpTransform[6:9],
                 self.fpTransform[3:6],
