@@ -210,8 +210,6 @@ def write_to_file(context, filepath, include_textures, ambientocclusion, firsttr
 
                         max, min = getMaxMin(uvs, [x, y])
 
-
-
                         if min[x] != max[x] and min[y] != max[y]:
 
                             verts = []
@@ -222,8 +220,6 @@ def write_to_file(context, filepath, include_textures, ambientocclusion, firsttr
 
                             print(maxr)
                             print(minr)
-
-
 
                             if direction == "south":
                                 bottom = minr
@@ -311,7 +307,6 @@ def write_to_file(context, filepath, include_textures, ambientocclusion, firsttr
 
                             path = imagepath.split(os.sep)
 
-
                             for dir in path:
                                 index = path.index(dir)
                                 if dir == "assets" and path[index+1] == "minecraft" and path[index+2] == "textures":
@@ -324,8 +319,6 @@ def write_to_file(context, filepath, include_textures, ambientocclusion, firsttr
                                             filepath += c
                                         else:
                                             break
-
-
 
                             if not [name[0], filepath] in textures:
                                 textures.append([name[0], filepath])
@@ -366,7 +359,6 @@ def write_to_file(context, filepath, include_textures, ambientocclusion, firsttr
                                 elif n[0:8] == "particle":
                                     particle = filepath
 
-
                     else:
                         print("Object \"" + data.name + "\" is not a cube!!!")
                 #TODO
@@ -405,7 +397,6 @@ def write_to_file(context, filepath, include_textures, ambientocclusion, firsttr
     file.write(json.dumps(fileContent))
     file.close()
 
-
     return {'FINISHED'}
 
 
@@ -438,162 +429,10 @@ class ExportBlockModel(Operator, ExportHelper):
             description="Turns the Ambient Occlusion option on or off",
             default=True,
             )
-    firsttransx = FloatProperty(
-            name="X",
-            description="Moves the Object in firstperson on the X axis",
-            default=0.0,
-            )
-    firsttransy = FloatProperty(
-            name="Y",
-            description="Moves the Object in firstperson on the Y axis",
-            default=0.0,
-            )
-    firsttransz = FloatProperty(
-            name="Z",
-            description="Moves the Object in firstperson on the Z axis",
-            default=0.0,
-            )
-    firstrotx = FloatProperty(
-            name="X",
-            description="Rotates the Object in firstperson on the X axis",
-            default=0.0,
-            )
-    firstroty = FloatProperty(
-            name="Y",
-            description="Rotates the Object in firstperson on the Y axis",
-            default=0.0,
-            )
-    firstrotz = FloatProperty(
-            name="Z",
-            description="Rotates the Object in firstperson on the Z axis",
-            default=0.0,
-            )
-    firstscalex = FloatProperty(
-            name="X",
-            description="Scales the Object in firstperson on the X axis",
-            default=1.0,
-            )
-    firstscaley = FloatProperty(
-            name="Y",
-            description="Scales the Object in firstperson on the Y axis",
-            default=1.0,
-            )
-    firstscalez = FloatProperty(
-            name="Z",
-            description="Scales the Object in firstperson on the Z axis",
-            default=1.0,
-            )
-    thirdtransx = FloatProperty(
-            name="X",
-            description="Moves the Object in thirdperson on the X axis",
-            default=0.0,
-            )
-    thirdtransy = FloatProperty(
-            name="Y",
-            description="Moves the Object in thirdperson on the Y axis",
-            default=0.0,
-            )
-    thirdtransz = FloatProperty(
-            name="Z",
-            description="Moves the Object in thirdperson on the Z axis",
-            default=0.0,
-            )
-    thirdrotx = FloatProperty(
-            name="X",
-            description="Rotates the Object in thirdperson on the X axis",
-            default=0.0,
-            )
-    thirdroty = FloatProperty(
-            name="Y",
-            description="Rotates the Object in thirdperson on the Y axis",
-            default=0.0,
-            )
-    thirdrotz = FloatProperty(
-            name="Z",
-            description="Rotates the Object in thirdperson on the Z axis",
-            default=0.0,
-            )
-    thirdscalex = FloatProperty(
-            name="X",
-            description="Scales the Object in thirdperson on the X axis",
-            default=1.0,
-            )
-    thirdscaley = FloatProperty(
-            name="Y",
-            description="Scales the Object in thirdperson on the Y axis",
-            default=1.0,
-            )
-    thirdscalez = FloatProperty(
-            name="Z",
-            description="Scales the Object in thirdperson on the Z axis",
-            default=1.0,
-            )
 
-    invtransx = FloatProperty(
-            name="X",
-            description="Moves the Object in the Inventory on the X axis",
-            default=0.0,
-            )
-    invtransy = FloatProperty(
-            name="Y",
-            description="Moves the Object in the Inventory on the Y axis",
-            default=0.0,
-            )
-    invtransz = FloatProperty(
-            name="Z",
-            description="Moves the Object in the Inventory on the Z axis",
-            default=0.0,
-            )
-    invrotx = FloatProperty(
-            name="X",
-            description="Rotates the Object in the Inventory on the X axis",
-            default=0.0,
-            )
-    invroty = FloatProperty(
-            name="Y",
-            description="Rotates the Object in the Inventory on the Y axis",
-            default=0.0,
-            )
-    invrotz = FloatProperty(
-            name="Z",
-            description="Rotates the Object in the Inventory on the Z axis",
-            default=0.0,
-            )
-    invscalex = FloatProperty(
-            name="X",
-            description="Scales the Object in the Inventory on the X axis",
-            default=1.0,
-            )
-    invscaley = FloatProperty(
-            name="Y",
-            description="Scales the Object in the Inventory on the Y axis",
-            default=1.0,
-            )
-    invscalez = FloatProperty(
-            name="Z",
-            description="Scales the Object in the Inventory on the Z axis",
-            default=1.0,
-            )
-#    randomoffset_x = BoolProperty(
-#            name="X",
-#            description="Use Random Offset on the X Axis",
-#            default=False,
-#            )
-#    randomoffset_y = BoolProperty(
-#            name="Y",
-#            description="Use Random Offset on the X Axis",
-#            default=False,
-#            )
-#    randomoffset_z = BoolProperty(
-#            name="Z",
-#            description="Use Random Offset on the X Axis",
-#            default=False,
-#            )
-#    inverntory3drender = BoolProperty(
-#            name="Inventory 3D Rendering",
-#            description="Renders the Block 3D inside an inventory",
-#            default=True,
-#            )
+    fpTransform = bpy.props.FloatVectorProperty(name = "First Person Transform", description = "Translation, Rotation and Scale of first person (in hand) rendering", size = 9, default=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0])
+    tpTransform = bpy.props.FloatVectorProperty(name = "Third Person Transform", description = "Translation, Rotation and Scale of third person rendering", size = 9, default=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0])
+    guiTransform = bpy.props.FloatVectorProperty(name = "GUI Transform", description = "Translation, Rotation and Scale in the GUI (Inventory)", size = 9, default=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0])
 
     def draw(self, context):
         layout = self.layout
@@ -615,42 +454,42 @@ class ExportBlockModel(Operator, ExportHelper):
         split = layout.split()
         col = split.column(align=True)
         col.label(text="Translate:")
-        col.prop(self, "firsttransx")
-        col.prop(self, "firsttransy")
-        col.prop(self, "firsttransz")
+        col.prop(self, "fpTransform", index=0, text="X")
+        col.prop(self, "fpTransform", index=1, text="Y")
+        col.prop(self, "fpTransform", index=2, text="Z")
 
         col = split.column(align=True)
         col.label(text="Rotate:")
-        col.prop(self, "firstrotx")
-        col.prop(self, "firstroty")
-        col.prop(self, "firstrotz")
+        col.prop(self, "fpTransform", index=0, text="X")
+        col.prop(self, "fpTransform", index=1, text="Y")
+        col.prop(self, "fpTransform", index=2, text="Z")
 
         col = split.column(align=True)
         col.label(text="Scale:")
-        col.prop(self, "firstscalex")
-        col.prop(self, "firstscaley")
-        col.prop(self, "firstscalez")
+        col.prop(self, "fpTransform", index=0, text="X")
+        col.prop(self, "fpTransform", index=1, text="Y")
+        col.prop(self, "fpTransform", index=2, text="Z")
 
         layout.label()
         layout.label(text="Third Person:")
         split = layout.split()
         col = split.column(align=True)
         col.label(text="Translate:")
-        col.prop(self, "thirdtransx")
-        col.prop(self, "thirdtransy")
-        col.prop(self, "thirdtransz")
+        col.prop(self, "tpTransform", index=0, text="X")
+        col.prop(self, "tpTransform", index=1, text="Y")
+        col.prop(self, "tpTransform", index=2, text="Z")
 
         col = split.column(align=True)
         col.label(text="Rotate:")
-        col.prop(self, "thirdrotx")
-        col.prop(self, "thirdroty")
-        col.prop(self, "thirdrotz")
+        col.prop(self, "tpTransform", index=0, text="X")
+        col.prop(self, "tpTransform", index=1, text="Y")
+        col.prop(self, "tpTransform", index=2, text="Z")
 
         col = split.column(align=True)
         col.label(text="Scale:")
-        col.prop(self, "thirdscalex")
-        col.prop(self, "thirdscaley")
-        col.prop(self, "thirdscalez")
+        col.prop(self, "tpTransform", index=0, text="X")
+        col.prop(self, "tpTransform", index=1, text="Y")
+        col.prop(self, "tpTransform", index=2, text="Z")
 
 
         layout.label()
@@ -658,21 +497,21 @@ class ExportBlockModel(Operator, ExportHelper):
         split = layout.split()
         col = split.column(align=True)
         col.label(text="Translate:")
-        col.prop(self, "invtransx")
-        col.prop(self, "invtransy")
-        col.prop(self, "invtransz")
+        col.prop(self, "guiTransform", index=0, text="X")
+        col.prop(self, "guiTransform", index=1, text="Y")
+        col.prop(self, "guiTransform", index=2, text="Z")
 
         col = split.column(align=True)
         col.label(text="Rotate:")
-        col.prop(self, "invrotx")
-        col.prop(self, "invroty")
-        col.prop(self, "invrotz")
+        col.prop(self, "guiTransform", index=0, text="X")
+        col.prop(self, "guiTransform", index=1, text="Y")
+        col.prop(self, "guiTransform", index=2, text="Z")
 
         col = split.column(align=True)
         col.label(text="Scale:")
-        col.prop(self, "invscalex")
-        col.prop(self, "invscaley")
-        col.prop(self, "invscalez")
+        col.prop(self, "guiTransform", index=0, text="X")
+        col.prop(self, "guiTransform", index=1, text="Y")
+        col.prop(self, "guiTransform", index=2, text="Z")
 #        layout.label(text="NOTE: The following options don't work in 14w26b")
 #        layout.label(text="They used to work in 14w21b. Hopefully they get readded.")
 #        row = layout.row()
@@ -688,15 +527,15 @@ class ExportBlockModel(Operator, ExportHelper):
 
     def execute(self, context):
         return write_to_file(context, self.filepath, self.include_textures, self.ambientocclusion,
-                [self.firsttransx, self.firsttransy, self.firsttransz],
-                [self.firstscalex, self.firstscaley, self.firstscalez],
-                [self.firstrotx, self.firstroty, self.firstrotz],
-                [self.thirdtransx, self.thirdtransy, self.thirdtransz],
-                [self.thirdscalex, self.thirdscaley, self.thirdscalez],
-                [self.thirdrotx, self.thirdroty, self.thirdrotz],
-                [self.invtransx, self.invtransy, self.invtransz],
-                [self.invscalex, self.invscaley, self.invscalez],
-                [self.invrotx, self.invroty, self.invrotz])
+                self.fpTransform[0:3],
+                self.fpTransform[3:6],
+                self.fpTransform[6:9],
+                self.tpTransform[0:3],
+                self.tpTransform[3:6],
+                self.tpTransform[6:9],
+                self.guiTransform[0:3],
+                self.guiTransform[3:6],
+                self.guiTransform[6:9])
 
 
 # Only needed if you want to add into a dynamic menu
