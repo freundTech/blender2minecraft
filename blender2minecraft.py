@@ -1,7 +1,7 @@
 bl_info = {
     "name": "Blender2Minecraft",
     "author": "freundTech",
-    "version": (0, 2),
+    "version": (0, 3),
     "blender": (2, 6, 9),
     "location": "File > Export > Export to Minecraft",
     "description": "Export Scene as Minecraft Blockmodel",
@@ -98,8 +98,10 @@ class attrdict(dict):
         self.__dict__ = self
 
 def write_to_file(context, filepath, include_textures, ambientocclusion, minify,
-                firsttrans, firstscale, firstrot,
-                thirdtrans, thirdscale, thirdrot,
+                first_left_trans, first_left_scale, first_left_rot,
+		first_right_trans, first_right_scale, first_right_rot,
+                third_left_trans, third_left_scale, third_left_rot,
+		third_right_trans, third_right_scale, third_right_rot,
                 invtrans, invscale, invrot,
                 headtrans, headscale, headrot,
                 groundtrans, groundscale, groundrot,
@@ -373,21 +375,31 @@ def write_to_file(context, filepath, include_textures, ambientocclusion, minify,
         fileContent["textures"] = {}
 
         for texture in textures:
-            fileContent["textures"][texture[0]] = texture[1]
+            fileContent["textures"][texture[0]] = 'blocks/' + texture[0]
 
         if particle != "":
             fileContent["textures"]["particle"] = particle
 
     fileContent["display"] = {
-        "firstperson": {
-            "rotation": [rval(firstrot[x]), rval(firstrot[y]), rval(firstrot[z])],
-            "translation": [rval(firsttrans[x]), rval(firsttrans[y]), rval(firsttrans[z])],
-            "scale": [rval(firstscale[x]), rval(firstscale[y]), rval(firstscale[z])]
+        "firstperson_lefthand": {
+            "rotation": [rval(first_left_rot[x]), rval(first_left_rot[y]), rval(first_left_rot[z])],
+            "translation": [rval(first_left_trans[x]), rval(first_left_trans[y]), rval(first_left_trans[z])],
+            "scale": [rval(first_left_scale[x]), rval(first_left_scale[y]), rval(first_left_scale[z])]
         },
-        "thirdperson": {
-            "rotation": [rval(thirdrot[x]), rval(thirdrot[y]), rval(thirdrot[z])],
-            "translation": [rval(thirdtrans[x]), rval(thirdtrans[y]), rval(thirdtrans[z])],
-            "scale": [rval(thirdscale[x]), rval(thirdscale[y]), rval(thirdscale[z])]
+	"firstperson_righthand": {
+            "rotation": [rval(first_right_rot[x]), rval(first_right_rot[y]), rval(first_right_rot[z])],
+            "translation": [rval(first_right_trans[x]), rval(first_right_trans[y]), rval(first_right_trans[z])],
+            "scale": [rval(first_right_scale[x]), rval(first_right_scale[y]), rval(first_right_scale[z])]
+        },
+        "thirdperson_righthand": {
+            "rotation": [rval(third_right_rot[x]), rval(third_right_rot[y]), rval(third_right_rot[z])],
+            "translation": [rval(third_right_trans[x]), rval(third_right_trans[y]), rval(third_right_trans[z])],
+            "scale": [rval(third_right_scale[x]), rval(third_right_scale[y]), rval(third_right_scale[z])]
+        },
+	"thirdperson_lefthand": {
+            "rotation": [rval(third_left_rot[x]), rval(third_left_rot[y]), rval(third_left_rot[z])],
+            "translation": [rval(third_left_trans[x]), rval(third_left_trans[y]), rval(third_left_trans[z])],
+            "scale": [rval(third_left_scale[x]), rval(third_left_scale[y]), rval(third_left_scale[z])]
         },
         "gui": {
             "rotation": [rval(invrot[x]), rval(invrot[y]), rval(invrot[z])],
@@ -454,12 +466,14 @@ class ExportBlockModel(Operator, ExportHelper):
             default=True,
             )
 
-    fpTransform = bpy.props.FloatVectorProperty(name = "First Person Transform", description = "Translation, Rotation and Scale of first person (in hand) rendering", size = 9, default=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0])
-    tpTransform = bpy.props.FloatVectorProperty(name = "Third Person Transform", description = "Translation, Rotation and Scale of third person rendering", size = 9, default=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0])
-    guiTransform = bpy.props.FloatVectorProperty(name = "GUI Transform", description = "Translation, Rotation and Scale in the GUI (Inventory)", size = 9, default=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0])
+    fplTransform = bpy.props.FloatVectorProperty(name = "First Person Left Hand Transform", description = "Translation, Rotation and Scale of first person (in left hand) rendering", size = 9, default=[0.0, 0.0, 0.0, 0.0, 45.0, 0.0, 0.4, 0.4, 0.4])
+    fprTransform = bpy.props.FloatVectorProperty(name = "First Person Right Hand Transform", description = "Translation, Rotation and Scale of first person (in right hand) rendering", size = 9, default=[0.0, 0.0, 0.0, 0.0, 45.0, 0.0, 0.4, 0.4, 0.4])
+    tplTransform = bpy.props.FloatVectorProperty(name = "Third Person Left Hand Transform", description = "Translation, Rotation and Scale of third person (in left hand) rendering", size = 9, default=[0.0, 2.5, 0.0, 75.0, 45.0, 0.0, 0.375, 0.375, 0.375])
+    tprTransform = bpy.props.FloatVectorProperty(name = "Third Person Right Hand Transform", description = "Translation, Rotation and Scale of third person (in right hand) rendering", size = 9, default=[0.0, 2.5, 0.0, 75.0, 45.0, 0.0, 0.375, 0.375, 0.375])
+    guiTransform = bpy.props.FloatVectorProperty(name = "GUI Transform", description = "Translation, Rotation and Scale in the GUI (Inventory)", size = 9, default=[0.0, 0.0, 0.0, 30.0, 225.0, 0.0, 0.35, 0.35, 0.35])
     headTransform = bpy.props.FloatVectorProperty(name = "Head Transform", description = "Translation, Rotation and Scale when equipped as helmet", size = 9, default=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0])
-    groundTransform = bpy.props.FloatVectorProperty(name = "Ground Transform", description = "Translation, Rotation and Scale on the ground", size = 9, default=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0])
-    fixedTransform = bpy.props.FloatVectorProperty(name = "Item Frame Transform", description = "Translation, Rotation and Scale in Item Frames", size = 9, default=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0])
+    groundTransform = bpy.props.FloatVectorProperty(name = "Ground Transform", description = "Translation, Rotation and Scale on the ground", size = 9, default=[0.0, 3.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.25, 0.25])
+    fixedTransform = bpy.props.FloatVectorProperty(name = "Item Frame Transform", description = "Translation, Rotation and Scale in Item Frames", size = 9, default=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.5])
 
     def draw(self, context):
         layout = self.layout
@@ -501,8 +515,10 @@ class ExportBlockModel(Operator, ExportHelper):
             col.prop(self, value, index=7, text="Y")
             col.prop(self, value, index=8, text="Z")
 
-        createTransform("First Person:", "fpTransform")
-        createTransform("Third Person:", "tpTransform")
+        createTransform("First Person - Left hand :", "fplTransform")
+        createTransform("First Person - Right hand :", "fprTransform")
+        createTransform("Third Person - Left hand:", "tplTransform")
+        createTransform("Third Person - Right hand:", "tprTransform")
         createTransform("Inventory:", "guiTransform")
         createTransform("Head:", "headTransform")
         createTransform("Ground:", "groundTransform")
@@ -523,12 +539,18 @@ class ExportBlockModel(Operator, ExportHelper):
 
     def execute(self, context):
         return write_to_file(context, self.filepath, self.include_textures, self.ambientocclusion, self.minify,
-                self.fpTransform[0:3],
-                self.fpTransform[6:9],
-                self.fpTransform[3:6],
-                self.tpTransform[0:3],
-                self.tpTransform[6:9],
-                self.tpTransform[3:6],
+                self.fplTransform[0:3],
+                self.fplTransform[6:9],
+                self.fplTransform[3:6],
+		self.fprTransform[0:3],
+                self.fprTransform[6:9],
+                self.fprTransform[3:6],
+                self.tplTransform[0:3],
+                self.tplTransform[6:9],
+                self.tplTransform[3:6],
+		self.tprTransform[0:3],
+                self.tprTransform[6:9],
+                self.tprTransform[3:6],
                 self.guiTransform[0:3],
                 self.guiTransform[6:9],
                 self.guiTransform[3:6],
