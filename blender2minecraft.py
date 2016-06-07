@@ -180,7 +180,7 @@ def write_to_file(context, filepath, include_textures, ambientocclusion, minify,
                     raise Exception("Only one Axis can be rotated at a time!")
                 elif notnull == 1:
                     if rotation[axis] == -22.5 or rotation[axis] == 22.5 or rotation[axis] == -45 or rotation[axis] == 45:
-                        item["rotation"] = { "origin": [rval(pos[x]*16+8), rval(pos[z]*16), rval(pos[y]*16+8)] }
+                        item["rotation"] = { "origin": [rval(pos[x]*16+8), rval(pos[z]*16), rval(pos[y]*-16+8)] }
 
                         axisStr = "none"
                         if axis == 0:
