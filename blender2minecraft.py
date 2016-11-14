@@ -17,420 +17,13 @@ import bmesh
 import os
 import math
 import json
+from collections import OrderedDict
 
 x = 0
 y = 1
 z = 2
 
 toRound = 2
-
-def getMaxMin(values, use):
-    max = [None]*len(use)
-    min = [None]*len(use)
-    for u in range(0, len(use)):
-        max[u] = float('-inf')
-        min[u] = float('inf')
-
-    for value in values:
-        for u in range(0, len(use)):
-            if value[use[u]] > max[u]:
-                max[u] = value[use[u]]
-            if value[use[u]] < min[u]:
-                min[u] = value[use[u]]
-
-    for u in range(0, len(use)):
-        max[u] = round(max[u], toRound)
-        min[u] = round(min[u], toRound)
-    return [max, min]
-
-def getIndex(values, mask, toUse):
-    for value in values:
-        if round(value[toUse[0]], toRound) == mask[0] and round(value[toUse[1]], toRound) == mask[1]:
-            return values.index(value)
-    raise Exception("Value not found")
-
-def rval(num):
-    return round(num, toRound)
-
-def getDir(face):
-    normals = []
-    for i in range(0, len(face.loops)):
-        normals.append(list(face.loops[i].vert.normal))
-
-    top = 0
-    bottom = 0
-    north = 0
-    south = 0
-    east = 0
-    west = 0
-
-    for i in range(0, len(normals)):
-        if normals[i][x] >= 0:
-            east += 1
-        else:
-            west += 1
-        if normals[i][y] >= 0:
-             north += 1
-        else:
-            south += 1
-        if normals[i][z] >= 0:
-            top += 1
-        else:
-            bottom += 1
-
-    if top == 4:
-        return ["up", [x, y]]
-    if bottom == 4:
-        return ["down", [x, y]]
-    if north == 4:
-        return ["north", [x, z]]
-    if south == 4:
-        return ["south", [x, z]]
-    if east == 4:
-        return ["east", [y, z]]
-    if west == 4:
-        return ["west", [y, z]]
-    raise Exception("This should never happen")
-
-class attrdict(dict):
-    def __init__(self, *args, **kwargs):
-        dict.__init__(self, *args, **kwargs)
-        self.__dict__ = self
-
-def write_to_file(context, filepath, include_textures, ambientocclusion, minify,
-                first_left_trans, first_left_scale, first_left_rot,
-		first_right_trans, first_right_scale, first_right_rot,
-                third_left_trans, third_left_scale, third_left_rot,
-		third_right_trans, third_right_scale, third_right_rot,
-                invtrans, invscale, invrot,
-                headtrans, headscale, headrot,
-                groundtrans, groundscale, groundrot,
-                fixedtrans, fixedscale, fixedrot):
-    textures = []
-    particle = ""
-    scene = context.scene
-    objects = scene.objects
-
-    file = open(filepath,'w', encoding='utf-8')
-
-    fileContent = {}
-
-    fileContent["__comment"] = "This model was created with freundTech's Blender2Minecraft converter (BETA)"
-    fileContent["ambientocclusion"] = ambientocclusion
-    fileContent["elements"] = []
-
-    if bpy.ops.object.mode_set.poll():
-        bpy.ops.object.mode_set(mode='OBJECT')
-
-    for obj in objects:
-        if obj.type == 'MESH':
-
-            data = obj.data
-            bm = bmesh.new()
-            bm.from_mesh(data)
-            uv_layer = bm.loops.layers.uv.active
-
-            if len(bm.faces) == 6:
-                box = []
-                for i in range(0, len(obj.bound_box)):
-                    box.append([])
-                    for j in range(0, len(obj.bound_box[i])):
-                        box[i].append(obj.bound_box[i][j])
-                pos = obj.location
-                scale = obj.scale
-                #print(str(obj.bound_box[0][:]) + " " + str(obj.bound_box[1][:]) + " " + str(obj.bound_box[2][:]) + str(obj.bound_box[3][:]) + " " + str(obj.bound_box[4][:]) + " " + str(obj.bound_box[5][:]) + " " + str(obj.bound_box[6][:]) + " " + str(obj.bound_box[7][:]) + " ")
-
-                for co in box:
-                    for i in range(0, 3):
-                        co[i] *= scale[i]
-                        co[i] += pos[i]
-                        co[i] *= 16
-                    co[x] += 8
-                    co[y] = (co[y]) * -1 + 8
-
-                #print(nl + nl)
-                #print(box[:][:])
-                toCoord, fromCoord = getMaxMin(box, [x, y, z])
-                print(toCoord)
-                print(fromCoord)
-
-                objname = [""]
-                for c in obj.name:
-                    if c != '.':
-                        objname[len(objname)-1] += c
-                    else:
-                        objname.append("")
-
-                item = {}
-
-                item["__comment"] = objname[0]
-                item["from"] = [rval(fromCoord[x]), rval(fromCoord[z]), rval(fromCoord[y])]
-                item["to"] = [rval(toCoord[x]), rval(toCoord[z]), rval(toCoord[y])]
-
-                rotation = [round(math.degrees(a), 1) for a in obj.rotation_euler]
-                notnull = 0
-                for i in range(0, len(rotation)):
-                    while rotation[i] >= 360:
-                        rotation[i] -= 360
-                for r in rotation:
-                    if r != 0:
-                        notnull += 1
-                        axis = rotation.index(r)
-                if notnull > 1:
-                    raise Exception("Only one Axis can be rotated at a time!")
-                elif notnull == 1:
-                    if rotation[axis] == -22.5 or rotation[axis] == 22.5 or rotation[axis] == -45 or rotation[axis] == 45:
-                        item["rotation"] = { "origin": [rval(pos[x]*16+8), rval(pos[z]*16), rval(pos[y]*-16+8)] }
-
-                        axisStr = "none"
-                        if axis == 0:
-                            axisStr = "x"
-                        elif axis == 1:
-                            axisStr = "z"
-                            rotation[axis] *= -1
-                        elif axis == 2:
-                            axisStr = "y"
-                        item["rotation"]["axis"] = axisStr
-                        item["rotation"]["angle"] = rotation[axis]
-
-                        for n in objname:
-                            if n[0:8] == "rescale:":
-                                item["rotation"]["rescale"] = n[8:].lower() == "true"
-                    else:
-                        raise Exception("You can only rotate by 22.5, -22.5, 45 or -45 degrees!")
-
-                item["faces"] = {}
-
-                for face in bm.faces:
-                    if len(face.loops) == 4:
-                        direction, toUse = getDir(face)
-
-                        try:
-                            uvs = []
-                            for i in range(0, len(face.loops)):
-                                uvs.append([face.loops[i][uv_layer].uv[x] * 16, face.loops[i][uv_layer].uv[y] * 16])
-                        except AttributeError:
-                            uvs = [[16, 16], [0, 16], [0, 0], [16, 0]]
-
-                        max, min = getMaxMin(uvs, [x, y])
-
-                        if min[x] != max[x] and min[y] != max[y]:
-
-                            verts = []
-                            for i in range(0, len(face.loops)):
-                                verts.append([face.loops[i].vert.co[x] * 16, face.loops[i].vert.co[y] * 16, face.loops[i].vert.co[z] * 16])
-                                print(face.loops[i].vert.co)
-                            maxr, minr = getMaxMin(verts, toUse)
-
-                            print(maxr)
-                            print(minr)
-
-                            if direction == "south":
-                                bottom = minr
-                            elif direction == "east":
-                                bottom = minr
-                            elif direction == "up":
-                                bottom = minr
-                            elif direction == "down":
-                                bottom = [minr[0], maxr[1]]
-                            elif direction == "north":
-                                bottom = [maxr[0], minr[1]]
-                            elif direction == "west":
-                                bottom = [maxr[0], minr[1]]
-
-                            print(bottom)
-                            print(verts)
-                            minI = getIndex(verts, bottom, toUse)
-
-                            print(minI)
-                            print(uvs)
-                            print(verts)
-                            print(toUse)
-                            minUv = list(uvs[minI])
-                            for i in range(0, len(minUv)):
-                                minUv[i] = round(minUv[i], toRound)
-
-                            nextI = minI + 1
-                            while nextI >= 4:
-                                nextI -= 4
-
-                            nextUv = list(uvs[nextI])
-                            for i in range(0, len(nextUv)):
-                                nextUv[i] = round(nextUv[i], toRound)
-
-                            if minUv == min and nextUv == [max[x], min[y]]:
-                                rot = 0
-                                mirror = False
-                            elif minUv == [max[x], min[y]] and nextUv == max:
-                                rot = 90
-                                mirror = False
-                            elif minUv == max and nextUv == [min[x], max[y]]:
-                                rot = 180
-                                mirror = False
-                            elif minUv == [min[x], max[y]] and nextUv == min:
-                                rot = 270
-                                mirror = False
-                            elif minUv == [max[x], min[y]] and nextUv == min:
-                                rot = 0
-                                mirror = True
-                            elif minUv == max and nextUv == [max[x], min[y]]:
-                                rot = 270
-                                mirror = True
-                            elif minUv == [min[x], max[y]] and nextUv == max:
-                                rot = 180
-                                mirror = True
-                            elif minUv == min and nextUv == [min[x], max[y]]:
-                                rot = 90
-                                mirror = True
-                            else:
-                                print(minUv)
-                                print(min)
-                                print(nextUv)
-                                print(max)
-                                raise Exception("Your UV is messed up")
-
-                            print(rot)
-                            print(mirror)
-
-                            try:
-                                image = data.uv_textures.active.data[face.index].image
-                            except AttributeError:
-                                image = attrdict(name=["texture"], filepath="")
-
-                            name = [""]
-                            for c in image.name:
-                                if c != '.':
-                                    name[len(name)-1] += c
-                                else:
-                                    name.append("")
-
-                            path = [""]
-                            filepath = ""
-                            imagepath = bpy.path.abspath(image.filepath)
-                            imagepath = os.path.abspath(imagepath)
-
-                            path = imagepath.split(os.sep)
-
-                            for dir in path:
-                                index = path.index(dir)
-                                if dir == "assets" and path[index+1] == "minecraft" and path[index+2] == "textures":
-                                    for i in range(index+3, len(path)-1):
-                                        filepath += path[i]
-                                        filepath += "/"
-
-                                    for c in path[len(path)-1]:
-                                        if c != '.':
-                                            filepath += c
-                                        else:
-                                            break
-
-                            if not [name[0], filepath] in textures:
-                                textures.append([name[0], filepath])
-
-                            print(name)
-
-                            print(direction)
-                            print(minUv)
-                            print(nextUv)
-                            print(max)
-                            print(min)
-
-                            s = max[y]
-
-                            max[y] = (min[y]- 8)*-1+8
-                            min[y] = (s- 8)*-1+8
-
-                            item["faces"][direction] = {}
-
-                            if not mirror:
-                                item["faces"][direction]["uv"] = [min[x], min[y], max[x], max[y]]
-                                item["faces"][direction]["texture"] = "#" + name[0]
-                                item["faces"][direction]["rotation"] = rot
-                            else:
-                                item["faces"][direction]["uv"] = [max[x], min[y], min[x], max[y]]
-                                item["faces"][direction]["texture"] = "#" + name[0]
-                                item["faces"][direction]["rotation"] = rot
-
-                            for n in name:
-                                if n[0:9] == "cullface:":
-                                    item["faces"][direction]["cullface"] = n[9:]
-                                elif n[0:8] == "cullface":
-                                    item["faces"][direction]["cullface"] = direction
-                                elif n[0:10] == "tintindex:":
-                                    item["faces"][direction]["tintindex"] = int(n[10:])
-                                elif n[0:9] == "tintindex":
-                                    item["faces"][direction]["tintindex"] = 1
-                                elif n[0:8] == "particle":
-                                    particle = filepath
-
-                    else:
-                        print("Object \"" + data.name + "\" is not a cube!!!")
-                #TODO
-                fileContent["elements"].append(item)
-
-            else:
-                print("Object \"" + data.name + "\" is not a cube!")
-
-    if include_textures:
-        fileContent["textures"] = {}
-
-        for texture in textures:
-            fileContent["textures"][texture[0]] = 'blocks/' + texture[0]
-
-        if particle != "":
-            fileContent["textures"]["particle"] = particle
-
-    fileContent["display"] = {
-        "firstperson_lefthand": {
-            "rotation": [rval(first_left_rot[x]), rval(first_left_rot[y]), rval(first_left_rot[z])],
-            "translation": [rval(first_left_trans[x]), rval(first_left_trans[y]), rval(first_left_trans[z])],
-            "scale": [rval(first_left_scale[x]), rval(first_left_scale[y]), rval(first_left_scale[z])]
-        },
-	"firstperson_righthand": {
-            "rotation": [rval(first_right_rot[x]), rval(first_right_rot[y]), rval(first_right_rot[z])],
-            "translation": [rval(first_right_trans[x]), rval(first_right_trans[y]), rval(first_right_trans[z])],
-            "scale": [rval(first_right_scale[x]), rval(first_right_scale[y]), rval(first_right_scale[z])]
-        },
-        "thirdperson_righthand": {
-            "rotation": [rval(third_right_rot[x]), rval(third_right_rot[y]), rval(third_right_rot[z])],
-            "translation": [rval(third_right_trans[x]), rval(third_right_trans[y]), rval(third_right_trans[z])],
-            "scale": [rval(third_right_scale[x]), rval(third_right_scale[y]), rval(third_right_scale[z])]
-        },
-	"thirdperson_lefthand": {
-            "rotation": [rval(third_left_rot[x]), rval(third_left_rot[y]), rval(third_left_rot[z])],
-            "translation": [rval(third_left_trans[x]), rval(third_left_trans[y]), rval(third_left_trans[z])],
-            "scale": [rval(third_left_scale[x]), rval(third_left_scale[y]), rval(third_left_scale[z])]
-        },
-        "gui": {
-            "rotation": [rval(invrot[x]), rval(invrot[y]), rval(invrot[z])],
-            "translation": [rval(invtrans[x]), rval(invtrans[y]), rval(invtrans[z])],
-            "scale": [rval(invscale[x]), rval(invscale[y]), rval(invscale[z])]
-        },
-        "head": {
-            "rotation": [rval(headrot[x]), rval(headrot[y]), rval(headrot[z])],
-            "translation": [rval(headtrans[x]), rval(headtrans[y]), rval(headtrans[z])],
-            "scale": [rval(headscale[x]), rval(headscale[y]), rval(headscale[z])]
-        },
-        "ground": {
-            "rotation": [rval(groundrot[x]), rval(groundrot[y]), rval(groundrot[z])],
-            "translation": [rval(groundtrans[x]), rval(groundtrans[y]), rval(groundtrans[z])],
-            "scale": [rval(groundscale[x]), rval(groundscale[y]), rval(groundscale[z])]
-        },
-        "fixed": {
-            "rotation": [rval(fixedrot[x]), rval(fixedrot[y]), rval(fixedrot[z])],
-            "translation": [rval(fixedtrans[x]), rval(fixedtrans[y]), rval(fixedtrans[z])],
-            "scale": [rval(fixedscale[x]), rval(fixedscale[y]), rval(fixedscale[z])]
-        }
-    }
-
-    if(minify):
-        file.write(json.dumps(fileContent, separators=(',', ':'), sort_keys=False))
-    else:
-        file.write(json.dumps(fileContent, indent=4, sort_keys=False))
-
-    file.close()
-
-    return {'FINISHED'}
 
 # ExportHelper is a helper class, defines filename and
 # invoke() function which calls the file selector.
@@ -443,7 +36,6 @@ class ExportBlockModel(Operator, ExportHelper):
     bl_idname = "export_mc.blockmodel"  # important since its how bpy.ops.import_test.some_data is constructed
     bl_label = "Export Scene as Minecraft Blockmodel"
 
-    # ExportHelper mixin class uses this
     filename_ext = ".json"
 
     filter_glob = StringProperty(
@@ -466,14 +58,76 @@ class ExportBlockModel(Operator, ExportHelper):
             default=True,
             )
 
-    fplTransform = bpy.props.FloatVectorProperty(name = "First Person Left Hand Transform", description = "Translation, Rotation and Scale of first person (in left hand) rendering", size = 9, default=[0.0, 0.0, 0.0, 0.0, 45.0, 0.0, 0.4, 0.4, 0.4])
-    fprTransform = bpy.props.FloatVectorProperty(name = "First Person Right Hand Transform", description = "Translation, Rotation and Scale of first person (in right hand) rendering", size = 9, default=[0.0, 0.0, 0.0, 0.0, 45.0, 0.0, 0.4, 0.4, 0.4])
-    tplTransform = bpy.props.FloatVectorProperty(name = "Third Person Left Hand Transform", description = "Translation, Rotation and Scale of third person (in left hand) rendering", size = 9, default=[0.0, 2.5, 0.0, 75.0, 45.0, 0.0, 0.375, 0.375, 0.375])
-    tprTransform = bpy.props.FloatVectorProperty(name = "Third Person Right Hand Transform", description = "Translation, Rotation and Scale of third person (in right hand) rendering", size = 9, default=[0.0, 2.5, 0.0, 75.0, 45.0, 0.0, 0.375, 0.375, 0.375])
-    guiTransform = bpy.props.FloatVectorProperty(name = "GUI Transform", description = "Translation, Rotation and Scale in the GUI (Inventory)", size = 9, default=[0.0, 0.0, 0.0, 30.0, 225.0, 0.0, 0.35, 0.35, 0.35])
-    headTransform = bpy.props.FloatVectorProperty(name = "Head Transform", description = "Translation, Rotation and Scale when equipped as helmet", size = 9, default=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0])
-    groundTransform = bpy.props.FloatVectorProperty(name = "Ground Transform", description = "Translation, Rotation and Scale on the ground", size = 9, default=[0.0, 3.0, 0.0, 0.0, 0.0, 0.0, 0.25, 0.25, 0.25])
-    fixedTransform = bpy.props.FloatVectorProperty(name = "Item Frame Transform", description = "Translation, Rotation and Scale in Item Frames", size = 9, default=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.5])
+    fplTransform = bpy.props.FloatVectorProperty(
+        name = "First Person Left Hand Transform",
+        description = "Translation, Rotation and Scale of first person (in left hand) rendering",
+        size = 9,
+        default=[0.0, 0.0, 0.0,
+                 0.0, 45.0, 0.0,
+                 0.4, 0.4, 0.4
+                ]
+    )
+    fprTransform = bpy.props.FloatVectorProperty(
+        name = "First Person Right Hand Transform",
+        description = "Translation, Rotation and Scale of first person (in right hand) rendering",
+        size = 9,
+        default=[0.0, 0.0, 0.0,
+                 0.0, 45.0, 0.0,
+                 0.4, 0.4, 0.4
+                ]
+    )
+    tplTransform = bpy.props.FloatVectorProperty(
+        name = "Third Person Left Hand Transform",
+        description = "Translation, Rotation and Scale of third person (in left hand) rendering",
+        size = 9,
+        default=[0.0, 2.5, 0.0,
+                 75.0, 45.0, 0.0,
+                 0.375, 0.375, 0.375
+                ]
+    )
+    tprTransform = bpy.props.FloatVectorProperty(
+        name = "Third Person Right Hand Transform",
+        description = "Translation, Rotation and Scale of third person (in right hand) rendering",
+        size = 9,
+        default=[0.0, 2.5, 0.0,
+                 75.0, 45.0, 0.0,
+                 0.375, 0.375, 0.375
+                ]
+    )
+    guiTransform = bpy.props.FloatVectorProperty(
+        name = "GUI Transform",
+        description = "Translation, Rotation and Scale in the GUI (Inventory)",
+        size = 9,
+        default=[0.0, 0.0, 0.0,
+                 30.0, 225.0, 0.0,
+                 0.35, 0.35, 0.35
+                ]
+    )
+    headTransform = bpy.props.FloatVectorProperty(
+        name = "Head Transform",
+        description = "Translation, Rotation and Scale when equipped as helmet",
+        size = 9,
+        default=[0.0, 0.0, 0.0,
+                 0.0, 0.0, 0.0,
+                 1.0, 1.0, 1.0])
+    groundTransform = bpy.props.FloatVectorProperty(
+        name = "Ground Transform",
+        description = "Translation, Rotation and Scale on the ground",
+        size = 9,
+        default=[0.0, 3.0, 0.0,
+                 0.0, 0.0, 0.0,
+                 0.25, 0.25, 0.25
+                ]
+    )
+    fixedTransform = bpy.props.FloatVectorProperty(
+        name = "Item Frame Transform",
+        description = "Translation, Rotation and Scale in Item Frames",
+        size = 9,
+        default=[0.0, 0.0, 0.0,
+                 0.0, 0.0, 0.0,
+                 0.5, 0.5, 0.5
+                ]
+    )
 
     def draw(self, context):
         layout = self.layout
@@ -524,31 +178,18 @@ class ExportBlockModel(Operator, ExportHelper):
         createTransform("Ground:", "groundTransform")
         createTransform("Item Frame:", "fixedTransform")
 
-#        layout.label(text="NOTE: The following options don't work in 14w26b")
-#        layout.label(text="They used to work in 14w21b. Hopefully they get readded.")
-#        row = layout.row()
-#        layout.label(text="Random Offset:")
-#        row = layout.row()
-#        row.prop(self, "randomoffset_x")
-#        row.prop(self, "randomoffset_y")
-#        row.prop(self, "randomoffset_z")
-#
-#        layout.label(text="Inventory Rendering:")
-#        row = layout.row()
-#        row.prop(self, "inverntory3drender")
-
     def execute(self, context):
-        return write_to_file(context, self.filepath, self.include_textures, self.ambientocclusion, self.minify,
+        return self.write_to_file(context, self.filepath, self.include_textures, self.ambientocclusion, self.minify,
                 self.fplTransform[0:3],
                 self.fplTransform[6:9],
                 self.fplTransform[3:6],
-		self.fprTransform[0:3],
+                self.fprTransform[0:3],
                 self.fprTransform[6:9],
                 self.fprTransform[3:6],
                 self.tplTransform[0:3],
                 self.tplTransform[6:9],
                 self.tplTransform[3:6],
-		self.tprTransform[0:3],
+                self.tprTransform[0:3],
                 self.tprTransform[6:9],
                 self.tprTransform[3:6],
                 self.guiTransform[0:3],
@@ -564,7 +205,387 @@ class ExportBlockModel(Operator, ExportHelper):
                 self.fixedTransform[6:9],
                 self.fixedTransform[3:6])
 
-# Only needed if you want to add into a dynamic menu
+
+    def getMaxMin(self, values, axis):
+        max = [None]*len(axis)
+        min = [None]*len(axis)
+        for u in range(0, len(axis)):
+            max[u] = float('-inf')
+            min[u] = float('inf')
+
+        for value in values:
+            for u in range(0, len(axis)):
+                if value[axis[u]] > max[u]:
+                    max[u] = value[axis[u]]
+                if value[axis[u]] < min[u]:
+                    min[u] = value[axis[u]]
+
+        for u in range(0, len(axis)):
+            max[u] = round(max[u], toRound)
+            min[u] = round(min[u], toRound)
+        return max, min
+
+    def getIndex(self, values, mask, axis):
+        for value in values:
+            if round(value[axis[0]], toRound) == mask[0] and round(value[axis[1]], toRound) == mask[1]:
+                return values.index(value)
+        raise Exception("Value not found")
+
+    def roundValue(self, num):
+        return round(num, toRound)
+
+    def getDir(self, face):
+        normals = []
+        for i in range(0, len(face.loops)):
+            normals.append(list(face.loops[i].vert.normal))
+
+        top = 0
+        bottom = 0
+        north = 0
+        south = 0
+        east = 0
+        west = 0
+
+        for i in range(0, len(normals)):
+            if normals[i][x] >= 0:
+                east += 1
+            else:
+                west += 1
+            if normals[i][y] >= 0:
+                 north += 1
+            else:
+                south += 1
+            if normals[i][z] >= 0:
+                top += 1
+            else:
+                bottom += 1
+
+        if top == 4:
+            return ["up", [x, y]]
+        if bottom == 4:
+            return ["down", [x, y]]
+        if north == 4:
+            return ["north", [x, z]]
+        if south == 4:
+            return ["south", [x, z]]
+        if east == 4:
+            return ["east", [y, z]]
+        if west == 4:
+            return ["west", [y, z]]
+        raise Exception("This should never happen")
+
+    class attrdict(dict):
+        def __init__(self, *args, **kwargs):
+            dict.__init__(self, *args, **kwargs)
+            self.__dict__ = self
+
+    def write_to_file(self, context, filepath, include_textures, ambientocclusion, minify,
+                    first_left_trans, first_left_scale, first_left_rot,
+                    first_right_trans, first_right_scale, first_right_rot,
+                    third_left_trans, third_left_scale, third_left_rot,
+                    third_right_trans, third_right_scale, third_right_rot,
+                    invtrans, invscale, invrot,
+                    headtrans, headscale, headrot,
+                    groundtrans, groundscale, groundrot,
+                    fixedtrans, fixedscale, fixedrot):
+        textures = []
+        particle = ""
+        scene = context.scene
+        objects = scene.objects
+
+        file = open(filepath,'w', encoding='utf-8')
+
+        fileContent = OrderedDict()
+
+        fileContent["__comment"] = "This model was created with freundTech's Blender2Minecraft converter (BETA)"
+        fileContent["ambientocclusion"] = ambientocclusion
+        fileContent["elements"] = []
+
+        if bpy.ops.object.mode_set.poll():
+            bpy.ops.object.mode_set(mode='OBJECT')
+
+        for obj in objects:
+            if obj.type == 'MESH':
+
+                data = obj.data
+                bm = bmesh.new()
+                bm.from_mesh(data)
+                uv_layer = bm.loops.layers.uv.active
+
+                if len(bm.faces) == 6:
+                    box = []
+                    for i in range(0, len(obj.bound_box)):
+                        box.append([])
+                        for j in range(0, len(obj.bound_box[i])):
+                            box[i].append(obj.bound_box[i][j])
+                    pos = obj.location
+                    scale = obj.scale
+
+                    for co in box:
+                        for i in range(0, 3):
+                            co[i] *= scale[i]
+                            co[i] += pos[i]
+                            co[i] *= 16
+                        co[x] += 8
+                        co[y] = (co[y]) * -1 + 8
+
+                    toCoord, fromCoord = self.getMaxMin(box, [x, y, z])
+                    print(toCoord)
+                    print(fromCoord)
+
+                    objname = [""]
+                    for c in obj.name:
+                        if c != '.':
+                            objname[len(objname)-1] += c
+                        else:
+                            objname.append("")
+
+                    item = {}
+
+                    item["__comment"] = objname[0]
+                    item["from"] = [self.roundValue(fromCoord[x]), self.roundValue(fromCoord[z]), self.roundValue(fromCoord[y])]
+                    item["to"] = [self.roundValue(toCoord[x]), self.roundValue(toCoord[z]), self.roundValue(toCoord[y])]
+
+                    rotation = [round(math.degrees(a), 1) for a in obj.rotation_euler]
+                    notnull = 0
+                    for i in range(0, len(rotation)):
+                        while rotation[i] >= 360:
+                            rotation[i] -= 360
+                    for r in rotation:
+                        if r != 0:
+                            notnull += 1
+                            axis = rotation.index(r)
+                    if notnull > 1:
+                        raise Exception("Only one Axis can be rotated at a time!")
+                    elif notnull == 1:
+                        if rotation[axis] == -22.5 or rotation[axis] == 22.5 or rotation[axis] == -45 or rotation[axis] == 45:
+                            item["rotation"] = { "origin": [self.roundValue(pos[x]*16+8), self.roundValue(pos[z]*16), self.roundValue(pos[y]*-16+8)] }
+
+                            axisStr = "none"
+                            if axis == 0:
+                                axisStr = "x"
+                            elif axis == 1:
+                                axisStr = "z"
+                                rotation[axis] *= -1
+                            elif axis == 2:
+                                axisStr = "y"
+                            item["rotation"]["axis"] = axisStr
+                            item["rotation"]["angle"] = rotation[axis]
+
+                            for n in objname:
+                                if n[0:8] == "rescale:":
+                                    item["rotation"]["rescale"] = n[8:].lower() == "true"
+                        else:
+                            raise Exception("You can only rotate by 22.5, -22.5, 45 or -45 degrees!")
+
+                    item["faces"] = {}
+
+                    for face in bm.faces:
+                        if len(face.loops) == 4:
+                            direction, toUse = self.getDir(face)
+
+                            try:
+                                uvs = []
+                                for i in range(0, len(face.loops)):
+                                    uvs.append([face.loops[i][uv_layer].uv[x] * 16, face.loops[i][uv_layer].uv[y] * 16])
+                            except AttributeError:
+                                uvs = [[16, 16], [0, 16], [0, 0], [16, 0]]
+
+                            max, min = self.getMaxMin(uvs, [x, y])
+
+                            if min[x] != max[x] and min[y] != max[y]:
+
+                                verts = []
+                                for i in range(0, len(face.loops)):
+                                    verts.append([face.loops[i].vert.co[x] * 16, face.loops[i].vert.co[y] * 16, face.loops[i].vert.co[z] * 16])
+                                maxr, minr = self.getMaxMin(verts, toUse)
+
+                                if direction == "south":
+                                    bottom = minr
+                                elif direction == "east":
+                                    bottom = minr
+                                elif direction == "up":
+                                    bottom = minr
+                                elif direction == "down":
+                                    bottom = [minr[0], maxr[1]]
+                                elif direction == "north":
+                                    bottom = [maxr[0], minr[1]]
+                                elif direction == "west":
+                                    bottom = [maxr[0], minr[1]]
+
+                                minI = self.getIndex(verts, bottom, toUse)
+
+                                minUv = list(uvs[minI])
+                                for i in range(0, len(minUv)):
+                                    minUv[i] = round(minUv[i], toRound)
+
+                                nextI = minI + 1
+                                while nextI >= 4:
+                                    nextI -= 4
+
+                                nextUv = list(uvs[nextI])
+                                for i in range(0, len(nextUv)):
+                                    nextUv[i] = round(nextUv[i], toRound)
+
+                                if minUv == min and nextUv == [max[x], min[y]]:
+                                    rot = 0
+                                    mirror = False
+                                elif minUv == [max[x], min[y]] and nextUv == max:
+                                    rot = 90
+                                    mirror = False
+                                elif minUv == max and nextUv == [min[x], max[y]]:
+                                    rot = 180
+                                    mirror = False
+                                elif minUv == [min[x], max[y]] and nextUv == min:
+                                    rot = 270
+                                    mirror = False
+                                elif minUv == [max[x], min[y]] and nextUv == min:
+                                    rot = 0
+                                    mirror = True
+                                elif minUv == max and nextUv == [max[x], min[y]]:
+                                    rot = 270
+                                    mirror = True
+                                elif minUv == [min[x], max[y]] and nextUv == max:
+                                    rot = 180
+                                    mirror = True
+                                elif minUv == min and nextUv == [min[x], max[y]]:
+                                    rot = 90
+                                    mirror = True
+                                else:
+                                    raise Exception("Your UV is messed up")
+
+                                try:
+                                    image = data.uv_textures.active.data[face.index].image
+                                except AttributeError:
+                                    image = attrdict(name=["texture"], filepath="")
+
+                                name = [""]
+                                for c in image.name:
+                                    if c != '.':
+                                        name[len(name)-1] += c
+                                    else:
+                                        name.append("")
+
+                                path = [""]
+                                filepath = ""
+                                imagepath = bpy.path.abspath(image.filepath)
+                                imagepath = os.path.abspath(imagepath)
+
+                                path = imagepath.split(os.sep)
+
+                                for dir in path:
+                                    index = path.index(dir)
+                                    if dir == "assets" and path[index+1] == "minecraft" and path[index+2] == "textures":
+                                        for i in range(index+3, len(path)-1):
+                                            filepath += path[i]
+                                            filepath += "/"
+
+                                        for c in path[len(path)-1]:
+                                            if c != '.':
+                                                filepath += c
+                                            else:
+                                                break
+
+                                if not [name[0], filepath] in textures:
+                                    textures.append([name[0], filepath])
+
+                                s = max[y]
+
+                                max[y] = (min[y]- 8)*-1+8
+                                min[y] = (s- 8)*-1+8
+
+                                item["faces"][direction] = {}
+
+                                if not mirror:
+                                    item["faces"][direction]["uv"] = [min[x], min[y], max[x], max[y]]
+                                    item["faces"][direction]["texture"] = "#" + name[0]
+                                    item["faces"][direction]["rotation"] = rot
+                                else:
+                                    item["faces"][direction]["uv"] = [max[x], min[y], min[x], max[y]]
+                                    item["faces"][direction]["texture"] = "#" + name[0]
+                                    item["faces"][direction]["rotation"] = rot
+
+                                for n in name:
+                                    if n[0:9] == "cullface:":
+                                        item["faces"][direction]["cullface"] = n[9:]
+                                    elif n[0:8] == "cullface":
+                                        item["faces"][direction]["cullface"] = direction
+                                    elif n[0:10] == "tintindex:":
+                                        item["faces"][direction]["tintindex"] = int(n[10:])
+                                    elif n[0:9] == "tintindex":
+                                        item["faces"][direction]["tintindex"] = 1
+                                    elif n[0:8] == "particle":
+                                        particle = filepath
+
+                        else:
+                            print("Object \"" + data.name + "\" is not a cube!!!")
+
+                    fileContent["elements"].append(item)
+
+                else:
+                    print("Object \"" + data.name + "\" is not a cube!")
+
+        if include_textures:
+            fileContent["textures"] = {}
+
+            for texture in textures:
+                fileContent["textures"][texture[0]] = 'blocks/' + texture[0]
+
+            if particle != "":
+                fileContent["textures"]["particle"] = particle
+
+        fileContent["display"] = {
+            "firstperson_lefthand": {
+                "rotation": [self.roundValue(first_left_rot[x]), self.roundValue(first_left_rot[y]), self.roundValue(first_left_rot[z])],
+                "translation": [self.roundValue(first_left_trans[x]), self.roundValue(first_left_trans[y]), self.roundValue(first_left_trans[z])],
+                "scale": [self.roundValue(first_left_scale[x]), self.roundValue(first_left_scale[y]), self.roundValue(first_left_scale[z])]
+            },
+            "firstperson_righthand": {
+                "rotation": [self.roundValue(first_right_rot[x]), self.roundValue(first_right_rot[y]), self.roundValue(first_right_rot[z])],
+                "translation": [self.roundValue(first_right_trans[x]), self.roundValue(first_right_trans[y]), self.roundValue(first_right_trans[z])],
+                "scale": [self.roundValue(first_right_scale[x]), self.roundValue(first_right_scale[y]), self.roundValue(first_right_scale[z])]
+            },
+            "thirdperson_righthand": {
+                "rotation": [self.roundValue(third_right_rot[x]), self.roundValue(third_right_rot[y]), self.roundValue(third_right_rot[z])],
+                "translation": [self.roundValue(third_right_trans[x]), self.roundValue(third_right_trans[y]), self.roundValue(third_right_trans[z])],
+                "scale": [self.roundValue(third_right_scale[x]), self.roundValue(third_right_scale[y]), self.roundValue(third_right_scale[z])]
+            },
+            "thirdperson_lefthand": {
+                "rotation": [self.roundValue(third_left_rot[x]), self.roundValue(third_left_rot[y]), self.roundValue(third_left_rot[z])],
+                "translation": [self.roundValue(third_left_trans[x]), self.roundValue(third_left_trans[y]), self.roundValue(third_left_trans[z])],
+                "scale": [self.roundValue(third_left_scale[x]), self.roundValue(third_left_scale[y]), self.roundValue(third_left_scale[z])]
+            },
+            "gui": {
+                "rotation": [self.roundValue(invrot[x]), self.roundValue(invrot[y]), self.roundValue(invrot[z])],
+                "translation": [self.roundValue(invtrans[x]), self.roundValue(invtrans[y]), self.roundValue(invtrans[z])],
+                "scale": [self.roundValue(invscale[x]), self.roundValue(invscale[y]), self.roundValue(invscale[z])]
+            },
+            "head": {
+                "rotation": [self.roundValue(headrot[x]), self.roundValue(headrot[y]), self.roundValue(headrot[z])],
+                "translation": [self.roundValue(headtrans[x]), self.roundValue(headtrans[y]), self.roundValue(headtrans[z])],
+                "scale": [self.roundValue(headscale[x]), self.roundValue(headscale[y]), self.roundValue(headscale[z])]
+            },
+            "ground": {
+                "rotation": [self.roundValue(groundrot[x]), self.roundValue(groundrot[y]), self.roundValue(groundrot[z])],
+                "translation": [self.roundValue(groundtrans[x]), self.roundValue(groundtrans[y]), self.roundValue(groundtrans[z])],
+                "scale": [self.roundValue(groundscale[x]), self.roundValue(groundscale[y]), self.roundValue(groundscale[z])]
+            },
+            "fixed": {
+                "rotation": [self.roundValue(fixedrot[x]), self.roundValue(fixedrot[y]), self.roundValue(fixedrot[z])],
+                "translation": [self.roundValue(fixedtrans[x]), self.roundValue(fixedtrans[y]), self.roundValue(fixedtrans[z])],
+                "scale": [self.roundValue(fixedscale[x]), self.roundValue(fixedscale[y]), self.roundValue(fixedscale[z])]
+            }
+        }
+
+        if(minify):
+            file.write(json.dumps(fileContent, separators=(',', ':'), sort_keys=False))
+        else:
+            file.write(json.dumps(fileContent, indent=4, sort_keys=False))
+
+        file.close()
+
+        return {'FINISHED'}
+
 def menu_func_export(self, context):
     self.layout.operator(ExportBlockModel.bl_idname, text="Minecraft model (.json)")
 
