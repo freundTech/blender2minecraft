@@ -22,7 +22,12 @@ else:
 import bpy
 from bpy_extras.io_utils import ExportHelper
 from bpy.props import StringProperty, BoolProperty, EnumProperty, FloatProperty
-from bpy.types import Operator
+from bpy.types import Operator, Panel
+
+import math
+
+#pullrequests using pi will not be accepted. Learn to use tau ;)
+tau = 2*math.pi
 
 
 class ExportBlockModel(Operator, ExportHelper):
@@ -173,8 +178,6 @@ class ExportBlockModel(Operator, ExportHelper):
         createTransform("Item Frame:", "fixedTransform")
 
     def execute(self, context):
-        print(dir(export))
-
         #do the export
         #TODO: What was I thinking when writing that function signature
         return export.write_to_file(context, self.filepath, self.include_textures, self.ambientocclusion, self.minify,
@@ -207,13 +210,115 @@ class ExportBlockModel(Operator, ExportHelper):
 def menu_func_export(self, context):
     self.layout.operator(ExportBlockModel.bl_idname, text="Minecraft model (.json)")
 
+bpy.types.Image.MinecraftCullface = EnumProperty(
+    items=[("none", "None", "Don't use cullface"),
+           ("auto", "Auto", "Use direction the face is facing"),
+           ("x", "X", "Use X direction"),
+           ("y", "Y", "Use Y direction"),
+           ("z", "Z", "Use Z direction"),
+           ("-x", "-X", "Use -X direction"),
+           ("-y", "-Y", "Use -Y direction"),
+           ("-z", "-Z", "Use -Z direction"),
+          ],
+    name="Cullface Direction",
+    description="Hide this face if a block is placed in the given direction."
+)
+
+bpy.types.Image.MinecraftTintindex = BoolProperty(
+    name="Tintindex",
+    description="Has to be activated on grass, leafes and similar to color them accoring to biome"
+)
+
+def update_particle(self, context):
+    if self["MinecraftParticle"] == 1:
+        for image in bpy.data.images:
+            if "MinecraftParticle" in image and image != self:
+                image["MinecraftParticle"] = 0
+
+bpy.types.Image.MinecraftParticle = BoolProperty(
+    name="Particle",
+    description="Use this texure as block breaking particle. Can only be activated for one texture",
+    update=update_particle
+)
+
+class ModelFacePanel(Panel):
+    bl_label = "Minecraft Block Face Settings"
+    bl_space_type = 'IMAGE_EDITOR'
+    bl_region_type = 'UI'
+
+    @classmethod
+    def poll(self, context):
+        return context.area.spaces.active.image != None
+
+    def draw(self, context):
+        self.layout.prop(context.area.spaces.active.image, "MinecraftCullface")
+        self.layout.prop(context.area.spaces.active.image, "MinecraftTintindex")
+        self.layout.prop(context.area.spaces.active.image, "MinecraftParticle")
+
+class OBJECT_OT_MinecraftFixRotation(Operator):
+    bl_idname = "object.minecraftfixrotation"
+    bl_label = "Fix Rotation"
+    bl_description = "Fix object rotation to be usable as a minecraft model"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        for obj in context.selected_objects[:]: #We'll be changing the selection in this loop, so we have to copy the list
+            bpy.ops.object.select_all(action='DESELECT')
+            context.scene.objects.active = obj
+            obj.select = True
+            realrot = [None]*3
+            for i, rot in enumerate(obj.rotation_euler):
+                rot = round(rot/(tau/16))*(tau/16) #round to 1/16 rotation
+                blockrot = round(rot/(tau/4))*(tau/4) #round to 1/4 to know which rotation to apply
+                realrot[i] = rot - blockrot #rotation that can't be applied
+                obj.rotation_euler[i] = blockrot
+            bpy.ops.object.transform_apply(rotation=True)
+            for i, rot in enumerate(realrot):
+                if rot >= 0:
+                    rot %= 360
+                else:
+                    rot %= -360
+                if rot != 0:
+                    obj.rotation_euler[i] = rot
+                    break #Only one axis can be rotated. Just use the first one
+
+        return {'FINISHED'}
+
+class ModelPanel(Panel):
+    bl_label = "Minecraft Block Tools"
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'TOOLS'
+
+    @classmethod
+    def poll(self, context):
+        return len(context.selected_objects)
+
+    def draw(self, context):
+        self.layout.operator(OBJECT_OT_MinecraftFixRotation.bl_idname, text="Fix Rotation")
+
+addon_keymaps = []
+
 def register():
+    global keymap
+
     bpy.utils.register_module(__name__)
     bpy.types.INFO_MT_file_export.append(menu_func_export)
+
+    wm = bpy.context.window_manager
+    if wm.keyconfigs.addon:
+        km = wm.keyconfigs.addon.keymaps.new(name='Object Mode')
+        kmi = km.keymap_items.new(OBJECT_OT_MinecraftFixRotation.bl_idname, 'F', 'PRESS')
+        addon_keymaps.append(km)
 
 def unregister():
     bpy.utils.unregister_module(__name__)
     bpy.types.INFO_MT_file_export.remove(menu_func_export)
+
+    wm = bpy.context.window_manager
+    for km in addon_keymaps:
+        wm.keyconfigs.addon.keymaps.remove(km)
+
+    del addon_keymaps[:]
 
 if __name__ == "__main__":
     register()

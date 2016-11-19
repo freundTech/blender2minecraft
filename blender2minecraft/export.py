@@ -10,6 +10,16 @@ x = 0
 y = 1
 z = 2
 
+#Might contain errors. Not tested yet.
+cullfaceDirection = {
+    2: "east",
+    3: "north",
+    4: "up",
+    5: "west",
+    6: "south",
+    7: "bottom"
+}
+
 #Maybe make it configurable?
 #Number of decimal digits to be rounded to
 toRound = 2
@@ -34,7 +44,7 @@ def getMaxMin(values, axis):
         min[u] = round(min[u], toRound)
     return max, min
 
-def getIndex(self, values, mask, axis):
+def getIndex(values, mask, axis):
     for value in values:
         if round(value[axis[0]], toRound) == mask[0] and round(value[axis[1]], toRound) == mask[1]:
             return values.index(value)
@@ -145,8 +155,6 @@ def write_to_file(context, filepath, include_textures, ambientocclusion, minify,
                     co[y] = (co[y]) * -1 + 8
 
                 toCoord, fromCoord = getMaxMin(box, [x, y, z])
-                print(toCoord)
-                print(fromCoord)
 
                 objname = [""]
                 for c in obj.name:
@@ -275,13 +283,6 @@ def write_to_file(context, filepath, include_textures, ambientocclusion, minify,
                             except AttributeError:
                                 image = attrdict(name=["texture"], filepath="")
 
-                            name = [""]
-                            for c in image.name:
-                                if c != '.':
-                                    name[len(name)-1] += c
-                                else:
-                                    name.append("")
-
                             path = [""]
                             filepath = ""
                             imagepath = bpy.path.abspath(image.filepath)
@@ -302,8 +303,8 @@ def write_to_file(context, filepath, include_textures, ambientocclusion, minify,
                                         else:
                                             break
 
-                            if not [name[0], filepath] in textures:
-                                textures.append([name[0], filepath])
+                            if not [image.name, filepath] in textures:
+                                textures.append([image.name, filepath])
 
                             s = max[y]
 
@@ -314,25 +315,22 @@ def write_to_file(context, filepath, include_textures, ambientocclusion, minify,
 
                             if not mirror:
                                 item["faces"][direction]["uv"] = [min[x], min[y], max[x], max[y]]
-                                item["faces"][direction]["texture"] = "#" + name[0]
+                                item["faces"][direction]["texture"] = "#" + image.name
                                 item["faces"][direction]["rotation"] = rot
                             else:
                                 item["faces"][direction]["uv"] = [max[x], min[y], min[x], max[y]]
-                                item["faces"][direction]["texture"] = "#" + name[0]
+                                item["faces"][direction]["texture"] = "#" + image.name
                                 item["faces"][direction]["rotation"] = rot
 
-                            for n in name:
-                                if n[0:9] == "cullface:":
-                                    item["faces"][direction]["cullface"] = n[9:]
-                                elif n[0:8] == "cullface":
+                            if "MinecraftParticle" in image and image["MinecraftParticle"] == 1:
+                                particle = filepath
+                            if "MinecraftTintindex" in image and image["MinecraftTintindex"] != 0:
+                                item["faces"][direction]["tintindex"] = image["MinecraftTintindex"]
+                            if "MinecraftCullface" in image and image["MinecraftCullface"] != 0:
+                                if image["MinecraftCullface"] == 1:
                                     item["faces"][direction]["cullface"] = direction
-                                elif n[0:10] == "tintindex:":
-                                    item["faces"][direction]["tintindex"] = int(n[10:])
-                                elif n[0:9] == "tintindex":
-                                    item["faces"][direction]["tintindex"] = 1
-                                elif n[0:8] == "particle":
-                                    particle = filepath
-
+                                else:
+                                    item["faces"][direction]["cullface"] = cullfaceDirection[image["MinecraftCullface"]]
                     else:
                         print("Object \"" + data.name + "\" is not a cube!!!")
 
