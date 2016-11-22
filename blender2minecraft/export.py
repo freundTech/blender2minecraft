@@ -283,25 +283,18 @@ def write_to_file(context, filepath, include_textures, ambientocclusion, minify,
                             except AttributeError:
                                 image = attrdict(name=["texture"], filepath="")
 
-                            path = [""]
                             filepath = ""
+                            if image.filepath == "":
+                                print("Warning: Image %s not saved to disk. Can't get path!" % image.name)
                             imagepath = bpy.path.abspath(image.filepath)
                             imagepath = os.path.abspath(imagepath)
 
                             path = imagepath.split(os.sep)
 
-                            for dir in path:
-                                index = path.index(dir)
-                                if dir == "assets" and path[index+1] == "minecraft" and path[index+2] == "textures":
-                                    for i in range(index+3, len(path)-1):
-                                        filepath += path[i]
-                                        filepath += "/"
-
-                                    for c in path[len(path)-1]:
-                                        if c != '.':
-                                            filepath += c
-                                        else:
-                                            break
+                            for i, dir in enumerate(path):
+                                if dir == "assets" and path[i+1] == "minecraft" and path[i+2] == "textures":
+                                    filepath = os.path.join(*path[i+3:])
+                                    filepath = os.path.splitext(filepath)[0]
 
                             if not [image.name, filepath] in textures:
                                 textures.append([image.name, filepath])
@@ -343,7 +336,7 @@ def write_to_file(context, filepath, include_textures, ambientocclusion, minify,
         fileContent["textures"] = {}
 
         for texture in textures:
-            fileContent["textures"][texture[0]] = 'blocks/' + texture[0]
+            fileContent["textures"][texture[0]] = texture[1]
 
         if particle != "":
             fileContent["textures"]["particle"] = particle
