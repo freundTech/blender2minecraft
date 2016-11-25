@@ -286,15 +286,17 @@ def write_to_file(context, filepath, include_textures, ambientocclusion, minify,
                             filepath = ""
                             if image.filepath == "":
                                 print("Warning: Image %s not saved to disk. Can't get path!" % image.name)
-                            imagepath = bpy.path.abspath(image.filepath)
-                            imagepath = os.path.abspath(imagepath)
+                            else:
+                                filepath = image.filepath
+                                
+                                imagepath = bpy.path.abspath(image.filepath)
+                                imagepath = os.path.abspath(imagepath)
+                                path = imagepath.split(os.sep)
+                                for i, dir in enumerate(path):
+                                    if dir == "assets" and path[i+1] == "minecraft" and path[i+2] == "textures":
+                                        filepath = os.path.join(*path[i+3:])
 
-                            path = imagepath.split(os.sep)
-
-                            for i, dir in enumerate(path):
-                                if dir == "assets" and path[i+1] == "minecraft" and path[i+2] == "textures":
-                                    filepath = os.path.join(*path[i+3:])
-                                    filepath = os.path.splitext(filepath)[0]
+                                filepath = os.path.splitext(filepath)[0]
 
                             if not [image.name, filepath] in textures:
                                 textures.append([image.name, filepath])
