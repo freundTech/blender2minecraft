@@ -287,7 +287,7 @@ def write_to_file(context, filepath, include_textures, ambientocclusion, minify,
                             if image.filepath == "":
                                 print("Warning: Image %s not saved to disk. Can't get path!" % image.name)
                             else:
-                                filepath = image.filepath
+                                filepath = bpy.path.relpath(image.filepath)
                                 
                                 imagepath = bpy.path.abspath(image.filepath)
                                 imagepath = os.path.abspath(imagepath)
